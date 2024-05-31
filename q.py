@@ -119,6 +119,7 @@ def main(
     models_dir: str = "models",
 ):
     from utils import load_encoder_hparams_and_params
+    import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     encoder, hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
@@ -130,7 +131,11 @@ def main(
     assert len(input_ids) + n_tokens_to_generate < hparams["n_ctx"]
 
     # generate output ids
+    t = time.time()
     output_ids = generate(input_ids, params, hparams["n_head"], n_tokens_to_generate)
+    sec = time.time() - t
+    tps = n_tokens_to_generate / sec
+    print(f"Generated {tps:.2f} tokens/sec")
 
     # decode the ids back into a string
     output_text = encoder.decode(output_ids)
