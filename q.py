@@ -1,3 +1,4 @@
+from typing import Literal
 import numpy as np
 
 
@@ -115,7 +116,7 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
 def main(
     prompt: str,
     n_tokens_to_generate: int = 40,
-    model_size: str = "124M",
+    model_size: Literal["124M", "355M", "774M", "1558M"] = "124M",
     models_dir: str = "models",
 ):
     from utils import load_encoder_hparams_and_params

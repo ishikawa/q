@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from typing import Literal
 
 import numpy as np
 import requests
@@ -67,7 +68,9 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
     return params
 
 
-def load_encoder_hparams_and_params(model_size, models_dir):
+def load_encoder_hparams_and_params(
+    model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
+):
     assert model_size in ["124M", "355M", "774M", "1558M"]
 
     model_dir = os.path.join(models_dir, model_size)
