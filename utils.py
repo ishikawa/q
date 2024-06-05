@@ -2,9 +2,11 @@ import json
 import os
 import re
 from typing import Literal
+import pickle
 
 import numpy as np
 import requests
+
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -74,14 +76,34 @@ def load_encoder_hparams_and_params(
     assert model_size in ["124M", "355M", "774M", "1558M"]
 
     model_dir = os.path.join(models_dir, model_size)
+    params_pkl_path = os.path.join(model_dir, "params.pkl")
+
+    if os.path.exists(params_pkl_path):
+        encoder = get_encoder(model_size, models_dir)
+        hparams = json.load(open(os.path.join(model_dir, "hparams.json")))
+
+        with open(params_pkl_path, "rb") as f:
+            params = pickle.load(f)
+            return encoder, hparams, params
+
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     if not tf_ckpt_path:  # download files if necessary
         os.makedirs(model_dir, exist_ok=True)
         download_gpt2_files(model_size, model_dir)
         tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
+    assert tf_ckpt_path
 
     encoder = get_encoder(model_size, models_dir)
     hparams = json.load(open(os.path.join(model_dir, "hparams.json")))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams)
+
+    # Serialize params to local disk to avoid loading the tf checkpoint files again
+    with open(params_pkl_path, "wb") as f:
+        pickle.dump(params, f)
+
+    # Remove the tf checkpoint files to save disk space
+    for filename in os.listdir(model_dir):
+        if filename.startswith(os.path.basename(tf_ckpt_path)):
+            os.remove(os.path.join(model_dir, filename))
 
     return encoder, hparams, params
