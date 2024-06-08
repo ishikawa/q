@@ -19,7 +19,7 @@ $ poetry run download --model_size 124M
 
 Available models:
 
-- `"124M`
+- `124M`
 - `355M`
 - `774M`
 - `1558M`
