@@ -1,5 +1,6 @@
 from typing import Literal
 import numpy as np
+import argparse
 
 
 def gelu(x):
@@ -113,7 +114,7 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
 
 
-def main(
+def run(
     prompt: str,
     n_tokens_to_generate: int = 40,
     model_size: Literal["124M", "355M", "774M", "1558M"] = "124M",
@@ -144,7 +145,44 @@ def main(
     return output_text
 
 
-if __name__ == "__main__":
-    import fire
+def main():
 
-    fire.Fire(main)
+    parser = argparse.ArgumentParser(description="Main script for text generation.")
+    parser.add_argument("prompt", type=str, help="Input prompt for text generation")
+    parser.add_argument(
+        "--n_tokens_to_generate",
+        type=int,
+        default=40,
+        help="Number of tokens to generate",
+    )
+    parser.add_argument(
+        "--model_size",
+        type=str,
+        choices=["124M", "355M", "774M", "1558M"],
+        default="124M",
+        help="Size of the model to use",
+    )
+    parser.add_argument(
+        "--models_dir",
+        type=str,
+        default="models",
+        help="Directory where models are stored",
+    )
+
+    args = parser.parse_args()
+
+    # print(f"Prompt: {args.prompt}")
+    # print(f"Number of tokens to generate: {args.n_tokens_to_generate}")
+    # print(f"Model size: {args.model_size}")
+    # print(f"Models directory: {args.models_dir}")
+
+    run(
+        prompt=args.prompt,
+        n_tokens_to_generate=args.n_tokens_to_generate,
+        model_size=args.model_size,
+        models_dir=args.models_dir,
+    )
+
+
+if __name__ == "__main__":
+    main()
