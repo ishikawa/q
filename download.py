@@ -1,16 +1,16 @@
+# The script is designed to be run from the command line. It takes a model size to download.
 import json
 import os
 import re
-
-import numpy as np
-import requests
-import tensorflow as tf
-from tqdm import tqdm
-
-from encoder import get_encoder
+from typing import Literal
+import pickle
+import argparse
 
 
 def download_gpt2_files(model_size, model_dir):
+    import requests
+    from tqdm import tqdm
+
     assert model_size in ["124M", "355M", "774M", "1558M"]
     for filename in [
         "checkpoint",
@@ -42,6 +42,9 @@ def download_gpt2_files(model_size, model_dir):
 
 
 def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
+    import tensorflow as tf
+    import numpy as np
+
     def set_in_nested_dict(d, keys, val):
         if not keys:
             return val
@@ -67,18 +70,56 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
     return params
 
 
-def load_encoder_hparams_and_params(model_size, models_dir):
+def download_encoder_hparams_and_params(
+    model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
+):
+    import tensorflow as tf
+
     assert model_size in ["124M", "355M", "774M", "1558M"]
 
     model_dir = os.path.join(models_dir, model_size)
-    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    if not tf_ckpt_path:  # download files if necessary
-        os.makedirs(model_dir, exist_ok=True)
-        download_gpt2_files(model_size, model_dir)
-        tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
+    params_pkl_path = os.path.join(model_dir, "params.pkl")
 
-    encoder = get_encoder(model_size, models_dir)
+    # download files
+    os.makedirs(model_dir, exist_ok=True)
+    download_gpt2_files(model_size, model_dir)
+
+    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
+    assert tf_ckpt_path
+
     hparams = json.load(open(os.path.join(model_dir, "hparams.json")))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams)
 
-    return encoder, hparams, params
+    # Serialize params to local disk to avoid loading the tf checkpoint files again
+    with open(params_pkl_path, "wb") as f:
+        pickle.dump(params, f)
+
+    # Remove the tf checkpoint files to save disk space
+    for filename in os.listdir(model_dir):
+        if filename.startswith(os.path.basename(tf_ckpt_path)):
+            os.remove(os.path.join(model_dir, filename))
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Main script for text generation.")
+    parser.add_argument(
+        "--model_size",
+        type=str,
+        choices=["124M", "355M", "774M", "1558M"],
+        default="124M",
+        help="Size of the model to use",
+    )
+    parser.add_argument(
+        "--models_dir",
+        type=str,
+        default="models",
+        help="Directory where models are stored",
+    )
+
+    args = parser.parse_args()
+
+    download_encoder_hparams_and_params(args.model_size, args.models_dir)
+
+
+if __name__ == "__main__":
+    main()

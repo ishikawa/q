@@ -8,10 +8,26 @@ I'd like to learn about how transformers work in practice, including their archi
 $ poetry install
 ```
 
+## Download model
+
+You have to download an OpenAI model before executing `q`:
+
+```sh
+$ poetry install --extras download
+$ poetry run download --model_size 124M
+```
+
+Available models:
+
+- `"124M`
+- `355M`
+- `774M`
+- `1558M`
+
 ## Run
 
 ```sh
-$ poetry run python q.py "Alan Turing theorized that computers would one day become"
+$ poetry run q "Alan Turing theorized that computers would one day become"
 generating: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:04<00:00,  9.47it/s]
  the most powerful machines on the planet.
 
