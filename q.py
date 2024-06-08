@@ -1,6 +1,12 @@
 from typing import Literal
 import numpy as np
 import argparse
+import json
+import os
+from typing import Literal
+import pickle
+
+from encoder import get_encoder
 
 
 def gelu(x):
@@ -114,13 +120,34 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
 
 
+def load_encoder_hparams_and_params(
+    model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
+):
+    assert model_size in ["124M", "355M", "774M", "1558M"]
+
+    model_dir = os.path.join(models_dir, model_size)
+    params_pkl_path = os.path.join(model_dir, "params.pkl")
+
+    # Error when no model exists
+    if not os.path.exists(model_dir):
+        raise FileNotFoundError(
+            f"Model {model_size} not found in {models_dir}. You need to download it first."
+        )
+
+    encoder = get_encoder(model_size, models_dir)
+    hparams = json.load(open(os.path.join(model_dir, "hparams.json")))
+
+    with open(params_pkl_path, "rb") as f:
+        params = pickle.load(f)
+        return encoder, hparams, params
+
+
 def run(
     prompt: str,
     n_tokens_to_generate: int = 40,
     model_size: Literal["124M", "355M", "774M", "1558M"] = "124M",
     models_dir: str = "models",
 ):
-    from utils import load_encoder_hparams_and_params
     import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
@@ -146,7 +173,6 @@ def run(
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="Main script for text generation.")
     parser.add_argument("prompt", type=str, help="Input prompt for text generation")
     parser.add_argument(
