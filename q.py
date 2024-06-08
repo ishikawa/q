@@ -5,6 +5,7 @@ import json
 import os
 from typing import Literal
 import pickle
+from dataclasses import dataclass
 
 from encoder import get_encoder
 
@@ -111,7 +112,7 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
     from tqdm import tqdm
 
     for _ in tqdm(
-        range(n_tokens_to_generate), "generating"
+        range(n_tokens_to_generate), "Generating"
     ):  # auto-regressive decode loop
         logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
         next_id = np.argmax(logits[-1])  # greedy sampling
@@ -142,12 +143,18 @@ def load_encoder_hparams_and_params(
         return encoder, hparams, params
 
 
+@dataclass
+class GPTResult:
+    tps: float
+    output_text: str
+
+
 def run(
     prompt: str,
     n_tokens_to_generate: int = 40,
     model_size: Literal["124M", "355M", "774M", "1558M"] = "124M",
     models_dir: str = "models",
-):
+) -> GPTResult:
     import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
@@ -164,12 +171,11 @@ def run(
     output_ids = generate(input_ids, params, hparams["n_head"], n_tokens_to_generate)
     sec = time.time() - t
     tps = n_tokens_to_generate / sec
-    print(f"Generated {tps:.2f} tokens/sec")
 
     # decode the ids back into a string
     output_text = encoder.decode(output_ids)
 
-    return output_text
+    return GPTResult(tps=tps, output_text=output_text)
 
 
 def main():
@@ -202,12 +208,16 @@ def main():
     # print(f"Model size: {args.model_size}")
     # print(f"Models directory: {args.models_dir}")
 
-    run(
+    r = run(
         prompt=args.prompt,
         n_tokens_to_generate=args.n_tokens_to_generate,
         model_size=args.model_size,
         models_dir=args.models_dir,
     )
+
+    print(f"Generated {r.tps:.2f} tokens/sec")
+    print()
+    print(args.prompt + r.output_text)
 
 
 if __name__ == "__main__":
