@@ -374,23 +374,6 @@ minimum-jaxlib = ["jaxlib (==0.4.20)"]
 tpu = ["jaxlib (==0.4.26)", "libtpu-nightly (==0.1.dev20240403)", "requests"]
 
 [[package]]
-name = "jax-metal"
-version = "0.0.7"
-description = "JAX acceleration for Mac GPUs."
-optional = false
-python-versions = "*"
-files = [
-    {file = "jax_metal-0.0.7-py3-none-macosx_10_14_x86_64.whl", hash = "sha256:9b1b90221aa5718b88b9d0c97449fc95a8594b9b609bde086206a6742510831e"},
-    {file = "jax_metal-0.0.7-py3-none-macosx_13_0_arm64.whl", hash = "sha256:0f356de48d721ecc8a697ed97ae88b9c1323e546614a5b82ddb4721d4deb1021"},
-]
-
-[package.dependencies]
-jax = ">=0.4.26"
-jaxlib = ">=0.4.26"
-six = ">=1.15.0"
-wheel = ">=0.35,<1.0"
-
-[[package]]
 name = "jaxlib"
 version = "0.4.26"
 description = "XLA library for JAX"
@@ -1021,7 +1004,7 @@ testing = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metad
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
-optional = false
+optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
@@ -1199,7 +1182,7 @@ watchdog = ["watchdog (>=2.3)"]
 name = "wheel"
 version = "0.43.0"
 description = "A built-package format for Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
 files = [
     {file = "wheel-0.43.0-py3-none-any.whl", hash = "sha256:55c570405f142630c6b9f72fe09d9b67cf1477fcf543ae5b8dcb1f5b7377da81"},
@@ -1294,4 +1277,4 @@ download = ["tensorflow"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "ea506610842aaa7539e3cf7ed22a12b14f504f2f9eac0d1752f1e17dfbad3c7a"
+content-hash = "523147621f425fb25e509615531a7efaf95032a2dc3965371e945a6dc979184e"
