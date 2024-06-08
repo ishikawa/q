@@ -1,5 +1,5 @@
 from typing import Literal
-import numpy as np
+import jax.numpy as np
 import argparse
 import json
 import os

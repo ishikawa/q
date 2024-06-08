@@ -13,6 +13,13 @@ regex = "^2024.5.15"
 requests = "^2.32.2"
 tqdm = "^4.66.4"
 
+# JAX
+wheel = "^0.43.0"
+ml-dtypes = "~0.3.1"
+jax-metal = "^0.0.7"
+jax = "0.4.26"
+jaxlib = "0.4.26"
+
 # A list of all of the optional dependencies, some of which are included in the
 # below `extras`. They can be opted into by apps.
 tensorflow = { version = "==2.16.1", optional = true }
