@@ -6,7 +6,7 @@ from algorithm.functional import vectorize
 alias PI = 3.14159265358979323846
 
 
-fn tanh[dtype: DType](x: Tensor[dtype]) raises -> Tensor[dtype]:
+fn tanh[dtype: DType](x: Tensor[dtype]) -> Tensor[dtype]:
     """
     Computes the hyperbolic tangent of the input tensor element-wise.
     """
@@ -26,9 +26,9 @@ fn tanh[dtype: DType](x: Tensor[dtype]) raises -> Tensor[dtype]:
     return result_tensor
 
 
-fn gelu(x: Tensor[DType.float32]) raises -> Tensor[DType.float32]:
+fn gelu[dtype: DType](x: Tensor[dtype]) raises -> Tensor[dtype]:
     # return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
-    var a = math.sqrt(2.0 / PI) * (x + 0.044715 * (x**3))
+    var a = math.sqrt(2.0 / PI) * (x + 0.044715 * x**3)
     var b = 1.0 + tanh(a)
 
     return 0.5 * x * b
