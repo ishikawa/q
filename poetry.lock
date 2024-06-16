@@ -374,6 +374,23 @@ minimum-jaxlib = ["jaxlib (==0.4.20)"]
 tpu = ["jaxlib (==0.4.26)", "libtpu-nightly (==0.1.dev20240403)", "requests"]
 
 [[package]]
+name = "jax-metal"
+version = "0.0.7"
+description = "JAX acceleration for Mac GPUs."
+optional = true
+python-versions = "*"
+files = [
+    {file = "jax_metal-0.0.7-py3-none-macosx_10_14_x86_64.whl", hash = "sha256:9b1b90221aa5718b88b9d0c97449fc95a8594b9b609bde086206a6742510831e"},
+    {file = "jax_metal-0.0.7-py3-none-macosx_13_0_arm64.whl", hash = "sha256:0f356de48d721ecc8a697ed97ae88b9c1323e546614a5b82ddb4721d4deb1021"},
+]
+
+[package.dependencies]
+jax = ">=0.4.26"
+jaxlib = ">=0.4.26"
+six = ">=1.15.0"
+wheel = ">=0.35,<1.0"
+
+[[package]]
 name = "jaxlib"
 version = "0.4.26"
 description = "XLA library for JAX"
@@ -746,13 +763,13 @@ torch = ["torch"]
 
 [[package]]
 name = "packaging"
-version = "24.0"
+version = "24.1"
 description = "Core utilities for Python packages"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "packaging-24.0-py3-none-any.whl", hash = "sha256:2ddfb553fdf02fb784c234c7ba6ccc288296ceabec964ad2eae3777778130bc5"},
-    {file = "packaging-24.0.tar.gz", hash = "sha256:eb82c5e3e56209074766e6885bb04b8c38a0c015d0a30036ebe7ece34c9989e9"},
+    {file = "packaging-24.1-py3-none-any.whl", hash = "sha256:5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124"},
+    {file = "packaging-24.1.tar.gz", hash = "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002"},
 ]
 
 [[package]]
@@ -1273,8 +1290,9 @@ files = [
 
 [extras]
 download = ["tensorflow"]
+jax-metal = ["jax-metal", "wheel"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "523147621f425fb25e509615531a7efaf95032a2dc3965371e945a6dc979184e"
+content-hash = "95895421f3859d6fd4f1f2f49d4a90f9cd6f22f2008aafb9b11200e45a851366"
