@@ -19,11 +19,13 @@ def gelu(x):
     return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
 
 
+@jit
 def softmax(x):
     exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
     return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
 
 
+@jit
 def layer_norm(x, g, b, eps: float = 1e-5):
     mean = np.mean(x, axis=-1, keepdims=True)
     variance = np.var(x, axis=-1, keepdims=True)
@@ -33,10 +35,12 @@ def layer_norm(x, g, b, eps: float = 1e-5):
     return g * x + b  # scale and offset with gamma/beta params
 
 
+@jit
 def linear(x, w, b):  # [m, in], [in, out], [out] -> [m, out]
     return x @ w + b
 
 
+@jit
 def ffn(x, c_fc, c_proj):  # [n_seq, n_embd] -> [n_seq, n_embd]
     # project up
     a = gelu(linear(x, **c_fc))  # [n_seq, n_embd] -> [n_seq, 4*n_embd]
@@ -47,6 +51,7 @@ def ffn(x, c_fc, c_proj):  # [n_seq, n_embd] -> [n_seq, n_embd]
     return x
 
 
+@jit
 def attention(
     q, k, v, mask
 ):  # [n_q, d_k], [n_k, d_k], [n_k, d_v], [n_q, n_k] -> [n_q, d_v]
