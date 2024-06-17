@@ -31,7 +31,7 @@ black = "^24.4.2"
 
 [tool.poetry.extras]
 download = ["tensorflow"]
-jax_metal = ["wheel", "jax-metal"]
+jax-metal = ["wheel", "jax-metal"]
 
 [tool.poetry.scripts]
 q = "q:main"

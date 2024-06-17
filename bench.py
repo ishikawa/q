@@ -1,9 +1,22 @@
 from q import gelu
-import numpy as np
+
+
+import jax
+from jax import random
+
+jax.config.update("jax_platform_name", "cpu")
+
+key = random.key(1701)
+x = random.normal(key, (1_000,))
+gelu(x).block_until_ready()
+
+# -- NumPy
+# import numpy as np
+# x = np.random.randn(1_000)
 
 
 def test():
-    gelu(np.random.randn(1000)).block_until_ready()
+    gelu(x).block_until_ready()
 
 
 if __name__ == "__main__":
@@ -11,4 +24,4 @@ if __name__ == "__main__":
 
     n = 10000
     t = timeit.timeit("test()", setup="from __main__ import test", number=n)
-    print(f"{t / n:.6f} s per loop")
+    print(f"{t / n:.8f} s per loop")

@@ -1295,4 +1295,4 @@ jax-metal = ["jax-metal", "wheel"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "95895421f3859d6fd4f1f2f49d4a90f9cd6f22f2008aafb9b11200e45a851366"
+content-hash = "eb32644c06747d7ceee9fdee5d24f9bbbb877973d2d809a1afb8949b9b05dde9"
