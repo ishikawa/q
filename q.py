@@ -1,5 +1,9 @@
 from typing import Literal
+
 import jax.numpy as np
+from jax import jit
+
+# import numpy as np
 import argparse
 import json
 import os
@@ -10,6 +14,7 @@ from dataclasses import dataclass
 from encoder import get_encoder
 
 
+@jit
 def gelu(x):
     return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
 
