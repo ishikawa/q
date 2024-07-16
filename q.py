@@ -1,11 +1,11 @@
-from typing import Literal
-import numpy as np
 import argparse
 import json
 import os
-from typing import Literal
 import pickle
 from dataclasses import dataclass
+from typing import Literal
+
+import numpy as np
 
 from encoder import get_encoder
 

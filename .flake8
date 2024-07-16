@@ -1,0 +1,14 @@
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist
+
+extend-ignore =
+    # H101: Use TODO(NAME)
+    H101,
+    # whitespace before ':'
+    E203
+
+max-line-length = 120
