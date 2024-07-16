@@ -9,6 +9,9 @@ extend-ignore =
     # H101: Use TODO(NAME)
     H101,
     # whitespace before ':'
-    E203
+    E203,
+    # do not use bare 'except'
+    E722
+
 
 max-line-length = 120

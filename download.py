@@ -42,7 +42,7 @@ def download_gpt2_files(model_size, model_dir):
 
 
 def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
-    import tensorflow as tf
+    import tensorflow as tf  # type: ignore
     import numpy as np
 
     def set_in_nested_dict(d, keys, val):
@@ -73,7 +73,7 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
 def download_encoder_hparams_and_params(
     model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
 ):
-    import tensorflow as tf
+    import tensorflow as tf  # type: ignore
 
     assert model_size in ["124M", "355M", "774M", "1558M"]
 

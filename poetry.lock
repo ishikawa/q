@@ -1136,6 +1136,58 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "types-protobuf"
+version = "5.27.0.20240626"
+description = "Typing stubs for protobuf"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-protobuf-5.27.0.20240626.tar.gz", hash = "sha256:683ba14043bade6785e3f937a7498f243b37881a91ac8d81b9202ecf8b191e9c"},
+    {file = "types_protobuf-5.27.0.20240626-py3-none-any.whl", hash = "sha256:688e8f7e8d9295db26bc560df01fb731b27a25b77cbe4c1ce945647f7024f5c1"},
+]
+
+[[package]]
+name = "types-regex"
+version = "2024.5.15.20240519"
+description = "Typing stubs for regex"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-regex-2024.5.15.20240519.tar.gz", hash = "sha256:ef3f594a95a95d6b9b5704a1facf3511a73e4731209ddb8868461db4c42dc12b"},
+    {file = "types_regex-2024.5.15.20240519-py3-none-any.whl", hash = "sha256:d5895079cc66f91ae8818aeef14e9337c492ceb87ad0ff3df8c1c04d418cb9dd"},
+]
+
+[[package]]
+name = "types-requests"
+version = "2.32.0.20240712"
+description = "Typing stubs for requests"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-requests-2.32.0.20240712.tar.gz", hash = "sha256:90c079ff05e549f6bf50e02e910210b98b8ff1ebdd18e19c873cd237737c1358"},
+    {file = "types_requests-2.32.0.20240712-py3-none-any.whl", hash = "sha256:f754283e152c752e46e70942fa2a146b5bc70393522257bb85bd1ef7e019dcc3"},
+]
+
+[package.dependencies]
+urllib3 = ">=2"
+
+[[package]]
+name = "types-tensorflow"
+version = "2.16.0.20240627"
+description = "Typing stubs for tensorflow"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-tensorflow-2.16.0.20240627.tar.gz", hash = "sha256:2019c7d4e312746755d3f696e0d3de318ff11fce4d59a6472d9d1f60f8254ecb"},
+    {file = "types_tensorflow-2.16.0.20240627-py3-none-any.whl", hash = "sha256:20ec31d23a0a4411951329bee63e3686182ce5fc52501dba470d1a2f20a750cb"},
+]
+
+[package.dependencies]
+numpy = ">=1.20,<2"
+types-protobuf = "*"
+types-requests = "*"
+
+[[package]]
 name = "types-tqdm"
 version = "4.66.0.20240417"
 description = "Typing stubs for tqdm"
@@ -1290,4 +1342,4 @@ download = ["tensorflow"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "58a59620f8a95eb265830d9b96574cdfb65c74f7ed9bb28a14ff2a70962485f4"
+content-hash = "7343cbb7c6bd502b9c4998cc32259310f05c6da0b046cc7201e215d15d8cdc40"
