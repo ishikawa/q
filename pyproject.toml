@@ -19,6 +19,13 @@ tensorflow = { version = "==2.16.1", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
+flake8 = "^7.1.0"
+isort = "^5.13.2"
+mypy = "^1.10.1"
+types-tqdm = "^4.66.0.20240417"
+types-regex = "^2024.5.15.20240519"
+types-requests = "^2.32.0.20240712"
+types-tensorflow = "^2.16.0.20240627"
 
 [tool.poetry.extras]
 download = ["tensorflow"]
