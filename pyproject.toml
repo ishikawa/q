@@ -10,12 +10,12 @@ readme = "README.md"
 python = "^3.12"
 numpy = "^1.26.4"
 regex = "^2024.5.15"
-requests = "^2.32.2"
 tqdm = "^4.66.4"
 
 # A list of all of the optional dependencies, some of which are included in the
 # below `extras`. They can be opted into by apps.
 tensorflow = { version = "==2.16.1", optional = true }
+requests = { version = "^2.32.2", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
@@ -28,7 +28,7 @@ types-requests = "^2.32.0.20240712"
 types-tensorflow = "^2.16.0.20240627"
 
 [tool.poetry.extras]
-download = ["tensorflow"]
+download = ["tensorflow", "requests"]
 
 [tool.poetry.scripts]
 q = "q:main"
