@@ -127,7 +127,6 @@ def load_encoder_hparams_and_params(
     assert model_size in ["124M", "355M", "774M", "1558M"]
 
     model_dir = os.path.join(models_dir, model_size)
-    params_pkl_path = os.path.join(model_dir, "params.pkl")
 
     # Error when no model exists
     if not os.path.exists(model_dir):
@@ -138,9 +137,30 @@ def load_encoder_hparams_and_params(
     encoder = get_encoder(model_size, models_dir)
     hparams = json.load(open(os.path.join(model_dir, "hparams.json")))
 
-    with open(params_pkl_path, "rb") as f:
-        params = pickle.load(f)
+    # Load params.pkl or combine separate files
+    params_pkl_path = os.path.join(model_dir, "params.pkl")
+    params_pkl_pattern = os.path.join(model_dir, "params_pkl_{part_number:03d}")
+
+    if os.path.exists(params_pkl_path):
+        with open(params_pkl_path, "rb") as f:
+            params = pickle.load(f)
+            return encoder, hparams, params
+    elif os.path.exists(params_pkl_pattern.format(part_number=0)):
+        data = b""
+        for part_number in range(1000):
+            part_path = params_pkl_pattern.format(part_number=part_number)
+            if not os.path.exists(part_path):
+                break
+
+            with open(part_path, "rb") as f:
+                data += f.read()
+
+        params = pickle.loads(data)
         return encoder, hparams, params
+    else:
+        raise FileNotFoundError(
+            f"params.pkl or params_pkl_nnn not found in {model_dir}. You need to download it first."
+        )
 
 
 @dataclass
