@@ -1,11 +1,11 @@
 import json
 import os
 import pickle
-from typing import Literal, TypedDict
 
 import numpy as np
 
 from ..encoder import Encoder, get_encoder
+from ..types import MODEL_SIZE, HyperParameters, ModelSize
 
 
 def gelu(x):
@@ -119,18 +119,10 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
 
 
-class HyperParameters(TypedDict):
-    n_vocab: int
-    n_ctx: int
-    n_embd: int
-    n_head: int
-    n_layer: int
-
-
 def load_encoder_hparams_and_params(
-    model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
+    model_size: ModelSize, models_dir: str
 ) -> tuple[Encoder, HyperParameters, dict]:
-    assert model_size in ["124M", "355M", "774M", "1558M"]
+    assert model_size in MODEL_SIZE
 
     model_dir = os.path.join(models_dir, model_size)
 

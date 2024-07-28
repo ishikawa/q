@@ -1,8 +1,8 @@
 import argparse
 from dataclasses import dataclass
-from typing import Literal
 
 from .backend.numpy import generate, load_encoder_hparams_and_params
+from .types import ModelSize
 
 
 @dataclass
@@ -14,7 +14,7 @@ class GPTResult:
 def run(
     prompt: str,
     n_tokens_to_generate: int = 40,
-    model_size: Literal["124M", "355M", "774M", "1558M"] = "124M",
+    model_size: ModelSize = "124M",
     models_dir: str = "models",
 ) -> GPTResult:
     import time
