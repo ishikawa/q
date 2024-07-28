@@ -4,7 +4,6 @@ import pickle
 
 import numpy as np
 
-from ..encoder import Encoder, get_encoder
 from ..types import MODEL_SIZE, HyperParameters, ModelSize
 
 
@@ -119,30 +118,29 @@ def generate(inputs, params, n_head, n_tokens_to_generate):
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
 
 
-def load_encoder_hparams_and_params(
+def load_hparams_and_params(
     model_size: ModelSize, models_dir: str
-) -> tuple[Encoder, HyperParameters, dict]:
+) -> tuple[HyperParameters, dict]:
     assert model_size in MODEL_SIZE
 
-    model_dir = os.path.join(models_dir, model_size)
+    target_dir = os.path.join(models_dir, model_size)
 
     # Error when no model exists
-    if not os.path.exists(model_dir):
+    if not os.path.exists(target_dir):
         raise FileNotFoundError(
             f"Model {model_size} not found in {models_dir}. You need to download it first."
         )
 
-    encoder = get_encoder(model_size, models_dir)
-    hparams: HyperParameters = json.load(open(os.path.join(model_dir, "hparams.json")))
+    hparams: HyperParameters = json.load(open(os.path.join(target_dir, "hparams.json")))
 
     # Load params.pkl or combine separate files
-    params_pkl_path = os.path.join(model_dir, "params.pkl")
-    params_pkl_pattern = os.path.join(model_dir, "params_pkl_{part_number:03d}")
+    params_pkl_path = os.path.join(target_dir, "params.pkl")
+    params_pkl_pattern = os.path.join(target_dir, "params_pkl_{part_number:03d}")
 
     if os.path.exists(params_pkl_path):
         with open(params_pkl_path, "rb") as f:
             params = pickle.load(f)
-            return encoder, hparams, params
+            return hparams, params
     elif os.path.exists(params_pkl_pattern.format(part_number=0)):
         data = b""
         for part_number in range(1000):
@@ -154,8 +152,8 @@ def load_encoder_hparams_and_params(
                 data += f.read()
 
         params = pickle.loads(data)
-        return encoder, hparams, params
+        return hparams, params
     else:
         raise FileNotFoundError(
-            f"params.pkl or params_pkl_nnn not found in {model_dir}. You need to download it first."
+            f"params.pkl or params_pkl_nnn not found in {target_dir}. You need to download it first."
         )

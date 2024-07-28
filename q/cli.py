@@ -1,7 +1,8 @@
 import argparse
 from dataclasses import dataclass
 
-from .backend.numpy import generate, load_encoder_hparams_and_params
+from .backend.numpy import generate, load_hparams_and_params
+from .encoder import load_encoder
 from .types import ModelSize
 
 
@@ -20,8 +21,8 @@ def run(
     import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
-    encoder, hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
-    print("hparams", hparams)
+    encoder = load_encoder(model_size, models_dir)
+    hparams, params = load_hparams_and_params(model_size, models_dir)
 
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
