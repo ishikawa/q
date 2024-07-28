@@ -122,7 +122,7 @@ class Encoder:
         return text
 
 
-def get_encoder(model_name, models_dir):
+def get_encoder(model_name, models_dir) -> Encoder:
     with open(os.path.join(models_dir, model_name, "encoder.json"), "r") as f:
         encoder = json.load(f)
     with open(

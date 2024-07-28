@@ -21,6 +21,7 @@ def run(
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     encoder, hparams, params = load_encoder_hparams_and_params(model_size, models_dir)
+    print("hparams", hparams)
 
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
