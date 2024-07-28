@@ -32,8 +32,8 @@ pytest = "^8.2.2"
 download = ["tensorflow", "requests"]
 
 [tool.poetry.scripts]
-q = "q:main"
-download = "download:main"
+q = "q.cli:main"
+download = "q.download:main"
 
 [build-system]
 requires = ["poetry-core"]

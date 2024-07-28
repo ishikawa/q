@@ -35,5 +35,5 @@ jobs:
           poetry run pytest
       - name: Linters
         run: |
-          poetry run flake8 *.py
-          poetry run mypy *.py
+          poetry run flake8 q
+          poetry run mypy q

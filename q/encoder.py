@@ -9,6 +9,8 @@ from functools import lru_cache
 
 import regex as re
 
+from q.common import MODEL_SIZE, ModelSize
+
 
 @lru_cache()
 def bytes_to_unicode():
@@ -122,7 +124,7 @@ class Encoder:
         return text
 
 
-def get_encoder(model_name, models_dir):
+def get_encoder(model_name, models_dir) -> Encoder:
     with open(os.path.join(models_dir, model_name, "encoder.json"), "r") as f:
         encoder = json.load(f)
     with open(
@@ -131,3 +133,17 @@ def get_encoder(model_name, models_dir):
         bpe_data = f.read()
     bpe_merges = [tuple(merge_str.split()) for merge_str in bpe_data.split("\n")[1:-1]]
     return Encoder(encoder=encoder, bpe_merges=bpe_merges)
+
+
+def load_encoder(model_size: ModelSize, models_dir: str) -> Encoder:
+    assert model_size in MODEL_SIZE
+
+    target_dir = os.path.join(models_dir, model_size)
+
+    # Error when no model exists
+    if not os.path.exists(target_dir):
+        raise FileNotFoundError(
+            f"Model {model_size} not found in {models_dir}. You need to download it first."
+        )
+
+    return get_encoder(model_size, models_dir)
