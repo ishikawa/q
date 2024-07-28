@@ -1,9 +1,11 @@
 import argparse
 from dataclasses import dataclass
 
-from .backend.numpy import generate, load_hparams_and_params
+from q.backend.numpy import generate
+
+from .params import load_hparams_and_params
 from .encoder import load_encoder
-from .types import ModelSize
+from .common import ModelSize
 
 
 @dataclass

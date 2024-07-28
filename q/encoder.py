@@ -9,7 +9,7 @@ from functools import lru_cache
 
 import regex as re
 
-from q.types import MODEL_SIZE, ModelSize
+from q.common import MODEL_SIZE, ModelSize
 
 
 @lru_cache()
