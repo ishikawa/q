@@ -1,5 +1,5 @@
 from pprint import pprint  # noqa: F401
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Callable, Optional
 
 import mlx.core as mx
 
@@ -112,20 +112,19 @@ def generate(
     params: GPT2Params,
     n_head: int,
     n_tokens_to_generate: int,
-    update_progress: Optional[Callable[[int, list[int]], Optional[bool]]] = None,
+    update_progress: Optional[Callable[[list[int]], Optional[bool]]] = None,
 ) -> list[int]:
     """
     トークンを生成する関数
-    
+
     Args:
         inputs: 入力トークンのリスト
         params: モデルパラメータ
         n_head: ヘッド数
         n_tokens_to_generate: 生成するトークン数
         update_progress: 進捗更新用コールバック関数。
-                          引数は (count, token_id) で、token_id は生成されたトークンID、
-                          count は生成されたトークン数。
-        
+                          引数は (tokens) で、tokens は生成されたトークンIDのリスト。
+
     Returns:
         生成されたトークンのリスト
     """
@@ -133,7 +132,7 @@ def generate(
     wpe: mx.array = ndarray_to_mlx_deeply(params["wpe"])
     blocks: list[dict[str, Any]] = ndarray_to_mlx_deeply(params["blocks"])
     ln_f: dict[str, Any] = ndarray_to_mlx_deeply(params["ln_f"])
-    
+
     generated_tokens = []
 
     for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
@@ -145,8 +144,8 @@ def generate(
 
         if update_progress:
             # コールバックにトークンを渡す
-            update_progress(1, [next_token])
-    
+            update_progress([next_token])
+
     return generated_tokens
 
 

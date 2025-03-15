@@ -1,7 +1,7 @@
 import argparse
 import time
 from dataclasses import dataclass
-from typing import Literal
+from typing import Callable, Literal, Optional
 
 from tqdm import tqdm
 
@@ -25,10 +25,8 @@ def run(
     model_size: ModelSize = "124M",
     models_dir: str = "models",
     backend: Literal["mlx", "numpy"] = "numpy",
-    stream: bool = False,
-    stream_callback = None,
+    stream: Optional[Callable[[str], None]] = None,
 ) -> GPTResult:
-    import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     encoder = load_encoder(model_size, models_dir)
@@ -43,6 +41,7 @@ def run(
     # 選択されたバックエンドに基づいて生成関数を選択
     if backend == "mlx":
         from q.backend.mlx import generate as generate_mlx
+
         generate = generate_mlx
     else:
         generate = generate_numpy
@@ -50,16 +49,15 @@ def run(
     # 開始時間を記録
     t = time.time()
 
-    if stream:
+    if stream is not None:
         # ストリーミングモードの場合
         text_chunks = []
-        
+
         def collect_text(chunk):
             text_chunks.append(chunk)
             # カスタムコールバックがあれば実行
-            if stream_callback:
-                stream_callback(chunk)
-        
+            stream(chunk)
+
         stream_handler = TokenStreamHandler(encoder=encoder, callback=collect_text)
 
         # トークンを生成してストリームハンドラーで処理
@@ -86,11 +84,11 @@ def run(
                 params=params,
                 n_head=hparams["n_head"],
                 n_tokens_to_generate=n_tokens_to_generate,
-                update_progress=lambda count, _: pbar.update(count),
+                update_progress=lambda tokens: pbar.update(len(tokens)),
             )
 
         sec = time.time() - t
-        tps = n_tokens_to_generate / sec
+        tps = n_tokens_to_generate / sec if sec > 0 else 0
 
         # decode the ids back into a string
         output_text = encoder.decode(output_ids)
@@ -148,29 +146,24 @@ def main():
         def print_chunk(chunk):
             print(chunk, end="", flush=True)
 
-        # ストリーミングモードで実行
         r = run(
             prompt=args.prompt,
             n_tokens_to_generate=args.n_tokens_to_generate,
             model_size=args.model_size,
             models_dir=args.models_dir,
             backend=args.backend,
-            stream=True,
-            stream_callback=print_chunk,
+            stream=print_chunk,
         )
 
-        # 生成速度を表示
-        print("\n")
+        print()
         print(f"Generated {r.tps:.2f} tokens/sec")
     else:
-        # 通常モード
         r = run(
             prompt=args.prompt,
             n_tokens_to_generate=args.n_tokens_to_generate,
             model_size=args.model_size,
             models_dir=args.models_dir,
             backend=args.backend,
-            stream=False,
         )
 
         print(f"Generated {r.tps:.2f} tokens/sec")

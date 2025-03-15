@@ -19,16 +19,15 @@ class TokenStreamHandler:
         self.token_buffer = []
         self.last_text = ""
 
-    def __call__(self, count, tokens):
+    def __call__(self, tokens: list[int]) -> bool:
         """
         新しいトークンが生成されたときに呼び出される
 
         Args:
-            count: 更新されたトークン数
             tokens: 生成されたトークンのリスト
 
         Returns:
-            True: 常に続行を指示
+            bool: 常にTrueを返す
         """
         if tokens:
             # トークンを追加
