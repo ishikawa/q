@@ -8,9 +8,9 @@ I'd like to learn about how transformers work in practice, including their archi
 $ poetry install
 ```
 
-## Download model
+## Download model parameters
 
-You have to download an OpenAI model before executing `q`:
+You have to download an OpenAI model parameters before executing `q`:
 
 ```sh
 $ poetry install --extras download
