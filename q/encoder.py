@@ -70,16 +70,18 @@ class Encoder:
         self.cache[token] = word
         return word
 
-    def encode(self, text):
-        bpe_tokens = []
+    def encode(self, text: str) -> list[int]:
+        bpe_tokens: list[int] = []
+
         for token in re.findall(self.pat, text):
             token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
             bpe_tokens.extend(
                 self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" ")
             )
+
         return bpe_tokens
 
-    def decode(self, tokens):
+    def decode(self, tokens: list[int]) -> str:
         text = "".join([self.decoder[token] for token in tokens])
         text = bytearray([self.byte_decoder[c] for c in text]).decode(
             "utf-8", errors=self.errors

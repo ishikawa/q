@@ -1,6 +1,8 @@
 import argparse
 from dataclasses import dataclass
 
+from tqdm import tqdm
+
 from q.backend.numpy import generate
 
 from .common import ModelSize
@@ -36,7 +38,15 @@ def run(
 
     # generate output ids
     t = time.time()
-    output_ids = generate(input_ids, params, hparams["n_head"], n_tokens_to_generate)
+    with tqdm(total=n_tokens_to_generate) as pbar:
+        pbar.set_description("Generating")
+        output_ids = generate(
+            input_ids,
+            params=params,
+            n_head=hparams["n_head"],
+            n_tokens_to_generate=n_tokens_to_generate,
+            update_progress=lambda x: pbar.update(x),
+        )
     sec = time.time() - t
     tps = n_tokens_to_generate / sec
 

@@ -1,3 +1,5 @@
+from typing import Callable, Optional
+
 import numpy as np
 
 
@@ -99,14 +101,19 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
     return x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
 
 
-def generate(inputs, params, n_head, n_tokens_to_generate):
-    from tqdm import tqdm
-
-    for _ in tqdm(
-        range(n_tokens_to_generate), "Generating"
-    ):  # auto-regressive decode loop
+def generate(
+    inputs: list[int],
+    *,
+    params: dict[str, np.ndarray],
+    n_head: int,
+    n_tokens_to_generate: int,
+    update_progress: Optional[Callable[[int], Optional[bool]]] = None,
+) -> list[int]:
+    for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
         logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
         next_id = np.argmax(logits[-1])  # greedy sampling
         inputs.append(int(next_id))  # append prediction to input
+        if update_progress:
+            update_progress(1)
 
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
