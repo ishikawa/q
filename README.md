@@ -1,6 +1,10 @@
 # q
 
-I'd like to learn about how transformers work in practice, including their architecture and applications in real-world scenarios. Therefore, I decided to create my own GPT model. First, I plan to learn from excellent articles and papers written by other people to understand basic concepts and its architecture. Gradually, I will build my own GPT model. Finally, I aim to use it in web application and games that interest me.
+> Homebrewed small-scale LLM based on GPT-2
+
+I'd like to gain practical experience with transformers, particularly by understanding their architecture and real-world applications, with a focus on small-scale LLMs. To achieve this, I decided to create _a tiny LLM_. First, I plan to study [excellent articles and papers](#References) to understand the basic concepts and architecture. Next, I will build and improve _my own GPT model_. My goal is to integrate it into web applications, games, and iOS apps that interest me.
+
+Currently, I am studying by running [OpenAI's GPT-2 model](https://github.com/openai/gpt-2/tree/master). I use an extremely simple numpy-based implementation as a baseline and am experimenting with an implementation using [mlx](https://ml-explore.github.io/mlx/build/html/index.html).
 
 ## Install
 
@@ -10,7 +14,7 @@ $ poetry install
 
 ## Download model parameters
 
-You have to download an OpenAI model parameters before executing `q`:
+You have to download an OpenAI GPT-2 model parameters before executing `q`:
 
 ```sh
 $ poetry install --extras download
@@ -26,32 +30,47 @@ Available models:
 
 ## Run
 
-numpy
-
-```sh
-poetry run q "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:04<00:00,  8.54it/s]
-Generated 8.50 tokens/sec
-
-Alan Turing theorized that computers would one day become the most powerful machines on the planet.
-
-The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
-```
-
-mlx
+**mlx** (recommended, but requires Apple silicon)
 
 ```sh
 $ poetry install --extras mlx
 $ poetry run q --backend mlx "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:01<00:00, 36.94it/s]
-Generated 36.40 tokens/sec
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:00<00:00, 42.19it/s]
+Generated 41.35 tokens/sec
 
 Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
 The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
 ```
 
+numpy
+
+```sh
+$ poetry run q "Alan Turing theorized that computers would one day become"
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:05<00:00,  7.34it/s]
+Generated 7.32 tokens/sec
+
+Alan Turing theorized that computers would one day become the most powerful machines on the planet.
+
+The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
+```
+
+### Stream output
+
+You can enable stream output by setting `--stream` flag:
+
+```sh
+$ poetry run q --stream --backend mlx "Alan Turing theorized that computers would one day become"
+Alan Turing theorized that computers would one day become the most powerful machines on the planet.
+
+The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
+
+Generated 37.19 tokens/sec
+```
+
 ## References
 
+- [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
 - [GPT in 60 Lines of NumPy | Jay Mody](https://jaykmody.com/blog/gpt-from-scratch/)
-  - [jaymody/picoGPT: An unnecessarily tiny implementation of GPT-2 in NumPy.](https://github.com/jaymody/picoGPT/tree/main)
+- [jaymody/picoGPT: An unnecessarily tiny implementation of GPT-2 in NumPy.](https://github.com/jaymody/picoGPT/tree/main)
+- [Reproducing GPT-2 (124M) in llm.c in 90 minutes for $20 · karpathy/llm.c · Discussion #481](https://github.com/karpathy/llm.c/discussions/481)
