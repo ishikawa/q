@@ -35,7 +35,7 @@ jobs:
           poetry run pytest ./test
       - name: flake8
         run: |
-          poetry run flake8 --exclude q
+          poetry run flake8 q test scripts
       - name: mypy
         run: |
           poetry run mypy q/*.py q/backend/numpy.py
