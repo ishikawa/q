@@ -1,29 +1,33 @@
 from typing import Any, Literal, TypeAlias, TypedDict
 
-import numpy as np
-
 MODEL_SIZE = ["124M", "355M", "774M", "1558M"]
 ModelSize: TypeAlias = Literal["124M", "355M", "774M", "1558M"]
 
+# Supported backend
+MODEL_BACKEND = Literal["mlx", "numpy"]
 
-class GPT2LayerNormParams(TypedDict):
+
+class GPT2LayerNormParams[A](TypedDict):
     """
-    GPT-2におけるln_fは、モデルの最終出力に適用されるLayer Normalization（層正規化）層を指します。
+    In GPT-2, **ln_f** refers to the Layer Normalization (LN) layer applied to the model's final
+    output.
 
-    この層は、モデル全体の安定性と性能を向上させるために、出力の正規化を行います。具体的には、GPT-2
-    のアーキテクチャでは、各トランスフォーマーブロック内にln_1とln_2という2つのLayer Normalization層
-    が存在し、さらにモデル全体の出力に対してln_fが適用されます。これにより、各層の出力が適切に正規化
-    され、学習の安定性とモデルの性能が向上します。​
+    This layer normalizes the output to enhance the overall stability and performance of the model.
+    Specifically, in the GPT-2 architecture, each transformer block contains two Layer Normalization
+    layers, **ln_1** and **ln_2**. Additionally, **ln_f** is applied to the model's overall output.
+
+    This ensures that the outputs of each layer are properly normalized, contributing to improved
+    training stability and model performance.
     """
 
     # beta
-    b: np.ndarray
+    b: A
     # gamma
-    g: np.ndarray
+    g: A
 
 
-class GPT2Params(TypedDict):
-    wte: np.ndarray
-    wpe: np.ndarray
+class GPT2Params[A](TypedDict):
+    wte: A
+    wpe: A
     blocks: list[dict[str, Any]]  # nested dict
-    ln_f: GPT2LayerNormParams
+    ln_f: GPT2LayerNormParams[A]

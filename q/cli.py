@@ -1,14 +1,14 @@
 import argparse
 import time
 from dataclasses import dataclass
-from typing import Callable, Literal, Optional
+from typing import Callable, Optional
 
 from tqdm import tqdm
 
 from q.backend.numpy import generate as generate_numpy
 from q.stream import TokenStreamHandler
 
-from .common import ModelSize
+from .common import MODEL_BACKEND, ModelSize
 from .encoder import load_encoder
 from .params import load_hparams_and_params
 
@@ -24,13 +24,15 @@ def run(
     n_tokens_to_generate: int = 40,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
-    backend: Literal["mlx", "numpy"] = "numpy",
+    backend: MODEL_BACKEND = "numpy",
     stream: Optional[Callable[[str], None]] = None,
 ) -> GPTResult:
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     encoder = load_encoder(model_size, models_dir)
-    hparams, params = load_hparams_and_params(model_size, models_dir)
+    hparams, params = load_hparams_and_params(
+        model_size=model_size, models_dir=models_dir, backend=backend
+    )
 
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
@@ -42,9 +44,9 @@ def run(
     if backend == "mlx":
         from q.backend.mlx import generate as generate_mlx
 
-        generate = generate_mlx
+        generate = generate_mlx  # type: ignore
     else:
-        generate = generate_numpy
+        generate = generate_numpy  # type: ignore
 
     # 開始時間を記録
     t = time.time()

@@ -1,10 +1,11 @@
 # The script is designed to be run from the command line. It takes a model size to download.
+import argparse
 import json
 import os
 import re
 from typing import Literal
-import pickle
-import argparse
+
+from q.params import save_params_to_safetensors
 
 
 def download_gpt2_files(model_size, model_dir):
@@ -42,8 +43,8 @@ def download_gpt2_files(model_size, model_dir):
 
 
 def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
-    import tensorflow as tf  # type: ignore
     import numpy as np
+    import tensorflow as tf  # type: ignore
 
     def set_in_nested_dict(d, keys, val):
         if not keys:
@@ -78,7 +79,7 @@ def download_encoder_hparams_and_params(
     assert model_size in ["124M", "355M", "774M", "1558M"]
 
     model_dir = os.path.join(models_dir, model_size)
-    params_pkl_path = os.path.join(model_dir, "params.pkl")
+    params_safetensors_path = os.path.join(model_dir, "params.safetensors")
 
     # download files
     os.makedirs(model_dir, exist_ok=True)
@@ -91,8 +92,7 @@ def download_encoder_hparams_and_params(
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams)
 
     # Serialize params to local disk to avoid loading the tf checkpoint files again
-    with open(params_pkl_path, "wb") as f:
-        pickle.dump(params, f)
+    save_params_to_safetensors(params, params_safetensors_path, overwrite=True)
 
     # Remove the tf checkpoint files to save disk space
     for filename in os.listdir(model_dir):

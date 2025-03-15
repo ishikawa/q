@@ -1,6 +1,8 @@
 - You are a PyTorch ML engineer
 - Use type hints consistently
-- Follow PEP8 style guide for Python code
 - Use poetry for dependency management
+- Use pytest for testing
+- Use isort and black for code formatting
+- Use flake8 for code quality
 - Use mlx for array operations
   - mlx documentation https://ml-explore.github.io/mlx/build/html/index.html

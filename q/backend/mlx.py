@@ -1,5 +1,5 @@
 from pprint import pprint  # noqa: F401
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import mlx.core as mx
 
@@ -109,7 +109,7 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
 def generate(
     inputs: list[int],
     *,
-    params: GPT2Params,
+    params: GPT2Params[mx.array],
     n_head: int,
     n_tokens_to_generate: int,
     update_progress: Optional[Callable[[list[int]], Optional[bool]]] = None,
@@ -128,10 +128,10 @@ def generate(
     Returns:
         生成されたトークンのリスト
     """
-    wte: mx.array = ndarray_to_mlx_deeply(params["wte"])
-    wpe: mx.array = ndarray_to_mlx_deeply(params["wpe"])
-    blocks: list[dict[str, Any]] = ndarray_to_mlx_deeply(params["blocks"])
-    ln_f: dict[str, Any] = ndarray_to_mlx_deeply(params["ln_f"])
+    wte = params["wte"]
+    wpe = params["wpe"]
+    blocks = params["blocks"]
+    ln_f = params["ln_f"]
 
     generated_tokens = []
 
@@ -147,12 +147,3 @@ def generate(
             update_progress([next_token])
 
     return generated_tokens
-
-
-def ndarray_to_mlx_deeply(d: Any) -> Any:
-    if isinstance(d, dict):
-        return {k: ndarray_to_mlx_deeply(v) for k, v in d.items()}
-    elif isinstance(d, list):
-        return [ndarray_to_mlx_deeply(v) for v in d]
-    else:
-        return mx.array(d)

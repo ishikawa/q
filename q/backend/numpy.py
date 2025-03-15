@@ -115,7 +115,7 @@ def gpt2(
 def generate(
     inputs: list[int],
     *,
-    params: GPT2Params,
+    params: GPT2Params[np.ndarray],
     n_head: int,
     n_tokens_to_generate: int,
     update_progress: Optional[Callable[[list[int]], Optional[bool]]] = None,
