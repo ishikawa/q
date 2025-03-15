@@ -33,8 +33,9 @@ class TokenStreamHandler:
         self.encoder = encoder
         self.callback = callback
         self.token_buffer = []
-        self.last_text = ""
-        self.pending_bytes = bytearray()  # マルチバイト文字の処理用
+        
+        # 完全なテキストを追跡するための変数
+        self.complete_text = ""
         
     def __call__(self, count, token_id):
         """
@@ -48,34 +49,28 @@ class TokenStreamHandler:
             True: 常に続行を指示
         """
         if token_id is not None:
+            # トークンを追加
             self.token_buffer.append(token_id)
             
-            # 全トークンをデコード
-            current_text = self.encoder.decode(self.token_buffer)
-            
-            # 新しく追加されたテキストのみを取得
-            new_text = current_text[len(self.last_text):]
-            
-            # 日本語などのマルチバイト文字の処理
-            if new_text:
-                try:
-                    # 新しいテキストをバイト配列に変換
-                    new_bytes = new_text.encode('utf-8')
-                    self.pending_bytes.extend(new_bytes)
+            # 完全なテキストを生成
+            try:
+                # 各トークンを個別にデコードして結合する方法
+                new_token_text = self.encoder.decode([token_id])
+                
+                # 新しいテキストがある場合のみコールバックを呼び出す
+                if new_token_text and self.callback:
+                    self.callback(new_token_text)
                     
-                    # 完全なマルチバイト文字のみをデコード
-                    valid_text = self.pending_bytes.decode('utf-8', errors='ignore')
+                self.complete_text += new_token_text
+            except Exception as e:
+                # 例外が発生した場合は完全なバッファを使用
+                full_text = self.encoder.decode(self.token_buffer)
+                new_text = full_text[len(self.complete_text):]
+                
+                if new_text and self.callback:
+                    self.callback(new_text)
                     
-                    if valid_text and self.callback:
-                        self.callback(valid_text)
-                        
-                    # バッファをクリア
-                    self.pending_bytes = bytearray()
-                    self.last_text = current_text
-                    
-                except UnicodeDecodeError:
-                    # 不完全なマルチバイト文字がある場合は次のトークンを待つ
-                    pass
+                self.complete_text = full_text
         
         return True  # 生成を続行
 
