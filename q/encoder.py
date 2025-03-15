@@ -1,6 +1,6 @@
-"""Byte pair encoding utilities.
-
-Copied from: https://github.com/openai/gpt-2/blob/master/src/encoder.py.
+"""
+Byte pair encoding utilities.
+Borrowed from: https://github.com/openai/gpt-2/blob/master/src/encoder.py.
 """
 
 import json
