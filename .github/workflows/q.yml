@@ -33,7 +33,9 @@ jobs:
       - name: Test
         run: |
           poetry run pytest ./test
-      - name: Linters
+      - name: flake8
         run: |
-          poetry run flake8 --exclude "q/backend/numpy.py,q/params.py" q
+          poetry run flake8 --exclude q
+      - name: mypy
+        run: |
           poetry run mypy q/*.py q/backend/numpy.py
