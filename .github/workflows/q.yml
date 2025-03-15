@@ -38,4 +38,4 @@ jobs:
           poetry run flake8 q test scripts
       - name: mypy
         run: |
-          poetry run mypy q/*.py q/backend/numpy.py
+          poetry run mypy --ignore-missing-imports q
