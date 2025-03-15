@@ -1,24 +1,24 @@
 from pprint import pprint  # noqa: F401
 from typing import Any, Callable, Optional
 
-import numpy as np
+import mlx.core as mx
 
-from q.common import GPT2LayerNormParams, GPT2Params
+from q.common import GPT2Params
 
 
 def gelu(x):
-    return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
+    return 0.5 * x * (1 + mx.tanh(mx.sqrt(2 / mx.pi) * (x + 0.044715 * x**3)))
 
 
 def softmax(x):
-    exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
-    return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+    exp_x = mx.exp(x - mx.max(x, axis=-1, keepdims=True))
+    return exp_x / mx.sum(exp_x, axis=-1, keepdims=True)
 
 
 def layer_norm(x, g, b, eps: float = 1e-5):
-    mean = np.mean(x, axis=-1, keepdims=True)
-    variance = np.var(x, axis=-1, keepdims=True)
-    x = (x - mean) / np.sqrt(
+    mean = mx.mean(x, axis=-1, keepdims=True)
+    variance = mx.var(x, axis=-1, keepdims=True)
+    x = (x - mean) / mx.sqrt(
         variance + eps
     )  # normalize x to have mean=0 and var=1 over last axis
     return g * x + b  # scale and offset with gamma/beta params
@@ -41,7 +41,7 @@ def ffn(x, c_fc, c_proj):  # [n_seq, n_embd] -> [n_seq, n_embd]
 def attention(
     q, k, v, mask
 ):  # [n_q, d_k], [n_k, d_k], [n_k, d_v], [n_q, n_k] -> [n_q, d_v]
-    return softmax(q @ k.T / np.sqrt(q.shape[-1]) + mask) @ v
+    return softmax(q @ k.T / mx.sqrt(q.shape[-1]) + mask) @ v
 
 
 def mha(x, c_attn, c_proj, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
@@ -49,15 +49,15 @@ def mha(x, c_attn, c_proj, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
     x = linear(x, **c_attn)  # [n_seq, n_embd] -> [n_seq, 3*n_embd]
 
     # split into qkv
-    qkv = np.split(x, 3, axis=-1)  # [n_seq, 3*n_embd] -> [3, n_seq, n_embd]
+    qkv = mx.split(x, 3, axis=-1)  # [n_seq, 3*n_embd] -> [3, n_seq, n_embd]
 
     # split into heads
     qkv_heads = list(
-        map(lambda x: np.split(x, n_head, axis=-1), qkv)
+        map(lambda x: mx.split(x, n_head, axis=-1), qkv)
     )  # [3, n_seq, n_embd] -> [3, n_head, n_seq, n_embd/n_head]
 
     # causal mask to hide future inputs from being attended to
-    causal_mask = (1 - np.tri(x.shape[0], dtype=x.dtype)) * -1e10  # [n_seq, n_seq]
+    causal_mask = (1 - mx.tri(x.shape[0], dtype=x.dtype)) * -1e10  # [n_seq, n_seq]
 
     # perform attention over each head
     out_heads = [
@@ -65,7 +65,9 @@ def mha(x, c_attn, c_proj, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
     ]  # [3, n_head, n_seq, n_embd/n_head] -> [n_head, n_seq, n_embd/n_head]
 
     # merge heads
-    x = np.hstack(out_heads)  # [n_head, n_seq, n_embd/n_head] -> [n_seq, n_embd]
+    x = mx.concatenate(
+        out_heads, axis=-1
+    )  # [n_head, n_seq, n_embd/n_head] -> [n_seq, n_embd]
 
     # out projection
     x = linear(x, **c_proj)  # [n_seq, n_embd] -> [n_seq, n_embd]
@@ -87,18 +89,10 @@ def transformer_block(
     return x
 
 
-def gpt2(
-    inputs: list[int],
-    *,
-    wte: np.ndarray,
-    wpe: np.ndarray,
-    blocks: list[dict[str, Any]],
-    ln_f: GPT2LayerNormParams,
-    n_head: int,
-):  # [n_seq] -> [n_seq, n_vocab]
+def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
     # token + positional embeddings
     x = (
-        wte[np.array(inputs)] + wpe[np.array(range(len(inputs)))]
+        wte[mx.array(inputs)] + wpe[mx.array(list(range(len(inputs))))]
     )  # [n_seq] -> [n_seq, n_embd]
 
     # forward pass through n_layer transformer blocks
@@ -120,12 +114,26 @@ def generate(
     n_tokens_to_generate: int,
     update_progress: Optional[Callable[[int], Optional[bool]]] = None,
 ) -> list[int]:
+    wte: mx.array = ndarray_to_mlx_deeply(params["wte"])
+    wpe: mx.array = ndarray_to_mlx_deeply(params["wpe"])
+    blocks: list[dict[str, Any]] = ndarray_to_mlx_deeply(params["blocks"])
+    ln_f: dict[str, Any] = ndarray_to_mlx_deeply(params["ln_f"])
+
     for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
-        logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
-        next_id = np.argmax(logits[-1])  # greedy sampling
-        inputs.append(int(next_id))  # append prediction to input
+        logits = gpt2(inputs, wte, wpe, blocks, ln_f, n_head=n_head)
+        next_id = mx.argmax(logits[-1])
+        inputs.append(int(next_id.item()))  # type: ignore
 
         if update_progress:
             update_progress(1)
 
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
+
+
+def ndarray_to_mlx_deeply(d: Any) -> Any:
+    if isinstance(d, dict):
+        return {k: ndarray_to_mlx_deeply(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [ndarray_to_mlx_deeply(v) for v in d]
+    else:
+        return mx.array(d)
