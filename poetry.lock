@@ -607,7 +607,7 @@ dev = ["absl-py", "pyink", "pylint (>=2.6.0)", "pytest", "pytest-xdist"]
 name = "mlx"
 version = "0.23.2"
 description = "A framework for machine learning on Apple silicon."
-optional = false
+optional = true
 python-versions = ">=3.9"
 files = [
     {file = "mlx-0.23.2-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:71a8ce6fc887fc4377271917b27c044c3104786909fdb55fd7f764f7bbd71803"},
@@ -1285,13 +1285,13 @@ telegram = ["requests"]
 
 [[package]]
 name = "types-protobuf"
-version = "5.29.1.20250208"
+version = "5.29.1.20250315"
 description = "Typing stubs for protobuf"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "types_protobuf-5.29.1.20250208-py3-none-any.whl", hash = "sha256:c5f8bfb4afdc1b5cbca1848f2c8b361a2090add7401f410b22b599ef647bf483"},
-    {file = "types_protobuf-5.29.1.20250208.tar.gz", hash = "sha256:c1acd6a59ab554dbe09b5d1fa7dd701e2fcfb2212937a3af1c03b736060b792a"},
+    {file = "types_protobuf-5.29.1.20250315-py3-none-any.whl", hash = "sha256:57efd51fd0979d1f5e1d94053d1e7cfff9c028e8d05b17e341b91a1c7fce37c4"},
+    {file = "types_protobuf-5.29.1.20250315.tar.gz", hash = "sha256:0b05bc34621d046de54b94fddd5f4eb3bf849fe2e13a50f8fb8e89f35045ff49"},
 ]
 
 [[package]]
@@ -1498,8 +1498,9 @@ files = [
 
 [extras]
 download = ["requests", "tensorflow"]
+mlx = ["mlx"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "a681d3455b7ccab12f0745236264d3af959064f1a783e830ce82f9e6fbfccdee"
+content-hash = "ab72d62a78c083c642a9a8e7e75aad7727cfc875849bdc58ee72bc0f0da62109"

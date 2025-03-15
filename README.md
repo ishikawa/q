@@ -26,10 +26,27 @@ Available models:
 
 ## Run
 
+numpy
+
 ```sh
-$ poetry run q "Alan Turing theorized that computers would one day become"
-generating: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:04<00:00,  9.47it/s]
- the most powerful machines on the planet.
+poetry run q "Alan Turing theorized that computers would one day become"
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:04<00:00,  8.54it/s]
+Generated 8.50 tokens/sec
+
+Alan Turing theorized that computers would one day become the most powerful machines on the planet.
+
+The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
+```
+
+mlx
+
+```sh
+$ poetry install --extras mlx
+$ poetry run q --backend mlx "Alan Turing theorized that computers would one day become"
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:01<00:00, 36.94it/s]
+Generated 36.40 tokens/sec
+
+Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
 The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
 ```

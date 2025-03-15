@@ -4,7 +4,6 @@ from typing import Literal
 
 from tqdm import tqdm
 
-from q.backend.mlx import generate as generate_mlx
 from q.backend.numpy import generate as generate_numpy
 
 from .common import ModelSize
@@ -23,7 +22,7 @@ def run(
     n_tokens_to_generate: int = 40,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
-    backend: Literal["mlx", "numpy"] = "mlx",
+    backend: Literal["mlx", "numpy"] = "numpy",
 ) -> GPTResult:
     import time
 
@@ -38,7 +37,12 @@ def run(
     assert len(input_ids) + n_tokens_to_generate < hparams["n_ctx"]
 
     # 選択されたバックエンドに基づいて生成関数を選択
-    generate = generate_mlx if backend == "mlx" else generate_numpy
+    if backend == "mlx":
+        from q.backend.mlx import generate as generate_mlx
+
+        generate = generate_mlx
+    else:
+        generate = generate_numpy
 
     # generate output ids
     t = time.time()
@@ -86,7 +90,7 @@ def main():
         "--backend",
         type=str,
         choices=["mlx", "numpy"],
-        default="mlx",
+        default="numpy",
         help="Backend to use for computation (mlx or numpy)",
     )
 
