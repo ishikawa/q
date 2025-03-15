@@ -49,7 +49,7 @@ def load_hparams_and_params(
 
             params = load_safetensors_file_numpy(params_safetensors_path)
         elif backend == "mlx":
-            from mlx.core import load as load_safetensors_mlx
+            from mlx.core import load as load_safetensors_mlx  # noqa
 
             params = load_safetensors_mlx(params_safetensors_path, format="safetensors")
         else:
@@ -77,7 +77,7 @@ def load_hparams_and_params(
 
         params = load_safetensors_numpy(raw_data)
     elif backend == "mlx":
-        from mlx.core import load as load_safetensors_mlx
+        from mlx.core import load as load_safetensors_mlx  # noqa
 
         # mlx.core.load takes file path, not raw data
         # so we need to write the raw data to a temporary file first
