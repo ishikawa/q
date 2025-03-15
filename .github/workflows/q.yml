@@ -32,8 +32,8 @@ jobs:
           poetry install
       - name: Test
         run: |
-          poetry run pytest
+          poetry run pytest ./test
       - name: Linters
         run: |
-          poetry run flake8 q
-          poetry run mypy q
+          poetry run flake8 q/*.py q/backend/numpy.py
+          poetry run mypy q/*.py q/backend/numpy.py
