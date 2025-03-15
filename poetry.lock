@@ -604,6 +604,28 @@ numpy = {version = ">=1.26.0", markers = "python_version >= \"3.12\""}
 dev = ["absl-py", "pyink", "pylint (>=2.6.0)", "pytest", "pytest-xdist"]
 
 [[package]]
+name = "mlx"
+version = "0.23.2"
+description = "A framework for machine learning on Apple silicon."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "mlx-0.23.2-cp310-cp310-macosx_13_0_arm64.whl", hash = "sha256:71a8ce6fc887fc4377271917b27c044c3104786909fdb55fd7f764f7bbd71803"},
+    {file = "mlx-0.23.2-cp310-cp310-macosx_14_0_arm64.whl", hash = "sha256:7f4fe9bc8a995f03b952a14c8866ed669d91cb73b6614b0392f576fd89512d9d"},
+    {file = "mlx-0.23.2-cp311-cp311-macosx_13_0_arm64.whl", hash = "sha256:2232e809c3c7c5576e5b63699677db834839c509ee222058394e6dc94c279dc6"},
+    {file = "mlx-0.23.2-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:b7b5f44c5c4602e3358482ffcb87be3d89694c005b2a814d6de2acb205ccc34a"},
+    {file = "mlx-0.23.2-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:0f227b6b3608176db3c0180ee355dad721a7e961f4252cfb29b10f881f646d5d"},
+    {file = "mlx-0.23.2-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:b7e82b5314177bd400976b40a3a99c4df1bdec2238c728ab71bd18ca5d5a6f9c"},
+    {file = "mlx-0.23.2-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:b9ad4c2c5d9cfd177b1894addd1ff56b8fa95b40b1ecefb767a8aab76dc7e518"},
+    {file = "mlx-0.23.2-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:a96baaa7b8d4d21960ab683ce91d509654cc9ae7384d7bb9aeecabd0da7fb9ef"},
+    {file = "mlx-0.23.2-cp39-cp39-macosx_13_0_arm64.whl", hash = "sha256:3075493b30354b8c04c991d301fa38266547a042794a9dd7ed8aaaf6df0b904e"},
+    {file = "mlx-0.23.2-cp39-cp39-macosx_14_0_arm64.whl", hash = "sha256:50277597c23afe912ac207e06e473339abb91498034d20220249e1eb294beded"},
+]
+
+[package.extras]
+dev = ["nanobind (==2.4.0)", "numpy", "pre-commit", "setuptools (>=42)", "torch", "typing_extensions"]
+
+[[package]]
 name = "mypy"
 version = "1.15.0"
 description = "Optional static typing for Python"
@@ -1480,4 +1502,4 @@ download = ["requests", "tensorflow"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "9adeea2ed9d7cd068c62f40b01e6040a088390316ba22b10c05f7c0a04be7a59"
+content-hash = "a681d3455b7ccab12f0745236264d3af959064f1a783e830ce82f9e6fbfccdee"
