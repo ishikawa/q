@@ -6,60 +6,22 @@ Copied from: https://github.com/openai/gpt-2/blob/master/src/encoder.py.
 import json
 import os
 from functools import lru_cache
+from pprint import pprint  # noqa: F401
 
 import regex as re
 
 from q.common import MODEL_SIZE, ModelSize
 
 
-@lru_cache()
-def bytes_to_unicode():
-    """
-    Returns list of utf-8 byte and a corresponding list of unicode strings.
-    The reversible bpe codes work on unicode strings.
-    This means you need a large # of unicode characters in your vocab if you want to avoid UNKs.
-    When you're at something like a 10B token dataset you end up needing around 5K for decent coverage.
-    This is a significant percentage of your normal, say, 32K bpe vocab.
-    To avoid that, we want lookup tables between utf-8 bytes and unicode strings.
-    And avoids mapping to whitespace/control characters the bpe code barfs on.
-    """
-    bs = (
-        list(range(ord("!"), ord("~") + 1))
-        + list(range(ord("¡"), ord("¬") + 1))
-        + list(range(ord("®"), ord("ÿ") + 1))
-    )
-    cs = bs[:]
-    n = 0
-    for b in range(2**8):
-        if b not in bs:
-            bs.append(b)
-            cs.append(2**8 + n)
-            n += 1
-    cs = [chr(n) for n in cs]
-    return dict(zip(bs, cs))
-
-
-def get_pairs(word):
-    """Return set of symbol pairs in a word.
-    Word is represented as tuple of symbols (symbols being variable-length strings).
-    """
-    pairs = set()
-    prev_char = word[0]
-    for char in word[1:]:
-        pairs.add((prev_char, char))
-        prev_char = char
-    return pairs
-
-
 class Encoder:
-    def __init__(self, encoder, bpe_merges, errors="replace"):
+    def __init__(self, encoder: dict[str, int], bpe_merges, errors="replace"):
         self.encoder = encoder
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.errors = errors  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
-        self.cache = {}
+        self.cache: dict[str, str] = {}
 
         # Should have added re.IGNORECASE so BPE merges can happen for capitalized versions of contractions
         self.pat = re.compile(
@@ -69,6 +31,7 @@ class Encoder:
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
+
         word = tuple(token)
         pairs = get_pairs(word)
 
@@ -126,7 +89,8 @@ class Encoder:
 
 def get_encoder(model_name, models_dir) -> Encoder:
     with open(os.path.join(models_dir, model_name, "encoder.json"), "r") as f:
-        encoder = json.load(f)
+        encoder: dict[str, int] = json.load(f)
+
     with open(
         os.path.join(models_dir, model_name, "vocab.bpe"), "r", encoding="utf-8"
     ) as f:
@@ -147,3 +111,42 @@ def load_encoder(model_size: ModelSize, models_dir: str) -> Encoder:
         )
 
     return get_encoder(model_size, models_dir)
+
+
+@lru_cache()
+def bytes_to_unicode():
+    """
+    Returns list of utf-8 byte and a corresponding list of unicode strings.
+    The reversible bpe codes work on unicode strings.
+    This means you need a large # of unicode characters in your vocab if you want to avoid UNKs.
+    When you're at something like a 10B token dataset you end up needing around 5K for decent coverage.
+    This is a significant percentage of your normal, say, 32K bpe vocab.
+    To avoid that, we want lookup tables between utf-8 bytes and unicode strings.
+    And avoids mapping to whitespace/control characters the bpe code barfs on.
+    """
+    bs = (
+        list(range(ord("!"), ord("~") + 1))
+        + list(range(ord("¡"), ord("¬") + 1))
+        + list(range(ord("®"), ord("ÿ") + 1))
+    )
+    cs = bs[:]
+    n = 0
+    for b in range(2**8):
+        if b not in bs:
+            bs.append(b)
+            cs.append(2**8 + n)
+            n += 1
+    cs = [chr(n) for n in cs]
+    return dict(zip(bs, cs))
+
+
+def get_pairs(word):
+    """Return set of symbol pairs in a word.
+    Word is represented as tuple of symbols (symbols being variable-length strings).
+    """
+    pairs = set()
+    prev_char = word[0]
+    for char in word[1:]:
+        pairs.add((prev_char, char))
+        prev_char = char
+    return pairs

@@ -1,12 +1,13 @@
 import argparse
 from dataclasses import dataclass
 
-# from q.backend.numpy import generate
-from q.backend.mlx import generate
+from q.backend.numpy import generate
 
 from .common import ModelSize
 from .encoder import load_encoder
 from .params import load_hparams_and_params
+
+# from q.backend.mlx import generate
 
 
 @dataclass
