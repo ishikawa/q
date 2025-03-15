@@ -1,6 +1,9 @@
-from typing import Callable, Optional
+from pprint import pprint  # noqa: F401
+from typing import Any, Callable, Optional
 
 import numpy as np
+
+from q.common import GPT2LayerNormParams, GPT2Params
 
 
 def gelu(x):
@@ -84,7 +87,15 @@ def transformer_block(
     return x
 
 
-def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
+def gpt2(
+    inputs: list[int],
+    *,
+    wte: np.ndarray,
+    wpe: np.ndarray,
+    blocks: list[dict[str, Any]],
+    ln_f: GPT2LayerNormParams,
+    n_head: int,
+):  # [n_seq] -> [n_seq, n_vocab]
     # token + positional embeddings
     x = (
         wte[np.array(inputs)] + wpe[np.array(range(len(inputs)))]
@@ -104,7 +115,7 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
 def generate(
     inputs: list[int],
     *,
-    params: dict[str, np.ndarray],
+    params: GPT2Params,
     n_head: int,
     n_tokens_to_generate: int,
     update_progress: Optional[Callable[[int], Optional[bool]]] = None,
@@ -113,6 +124,7 @@ def generate(
         logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
         next_id = np.argmax(logits[-1])  # greedy sampling
         inputs.append(int(next_id))  # append prediction to input
+
         if update_progress:
             update_progress(1)
 

@@ -1,4 +1,9 @@
+from pprint import pprint  # noqa: F401
+from typing import Any, Callable, Optional
+
 import mlx.core as mx
+
+from q.common import GPT2Params
 
 
 def gelu(x):
@@ -87,7 +92,7 @@ def transformer_block(
 def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
     # token + positional embeddings
     x = (
-        wte[mx.array(inputs)] + wpe[mx.array(range(len(inputs)))]
+        wte[mx.array(inputs)] + wpe[mx.array(list(range(len(inputs))))]
     )  # [n_seq] -> [n_seq, n_embd]
 
     # forward pass through n_layer transformer blocks
@@ -101,17 +106,34 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
     return x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
 
 
-def generate(inputs, params, n_head, n_tokens_to_generate):
-    from tqdm import tqdm
+def generate(
+    inputs: list[int],
+    *,
+    params: GPT2Params,
+    n_head: int,
+    n_tokens_to_generate: int,
+    update_progress: Optional[Callable[[int], Optional[bool]]] = None,
+) -> list[int]:
+    wte: mx.array = ndarray_to_mlx_deeply(params["wte"])
+    wpe: mx.array = ndarray_to_mlx_deeply(params["wpe"])
+    blocks: list[dict[str, Any]] = ndarray_to_mlx_deeply(params["blocks"])
+    ln_f: dict[str, Any] = ndarray_to_mlx_deeply(params["ln_f"])
 
-    # MLXの遅延評価を考慮して、評価が必要な箇所でmx.evalを使用
-    for _ in tqdm(
-        range(n_tokens_to_generate), "Generating"
-    ):  # auto-regressive decode loop
-        logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
-        logits = mx.eval(logits)  # 明示的に評価
+    for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
+        logits = gpt2(inputs, wte, wpe, blocks, ln_f, n_head=n_head)
         next_id = mx.argmax(logits[-1])
-        next_id = mx.eval(next_id)  # 明示的に評価
-        inputs.append(int(next_id.item()))  # append prediction to input
+        inputs.append(int(next_id.item()))  # type: ignore
+
+        if update_progress:
+            update_progress(1)
 
     return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
+
+
+def ndarray_to_mlx_deeply(d: Any) -> Any:
+    if isinstance(d, dict):
+        return {k: ndarray_to_mlx_deeply(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [ndarray_to_mlx_deeply(v) for v in d]
+    else:
+        return mx.array(d)
