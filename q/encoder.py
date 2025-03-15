@@ -7,6 +7,7 @@ import json
 import os
 from functools import lru_cache
 from pprint import pprint  # noqa: F401
+from typing import Literal
 
 import regex as re
 
@@ -14,10 +15,9 @@ from q.common import MODEL_SIZE, ModelSize
 
 
 class Encoder:
-    def __init__(self, encoder: dict[str, int], bpe_merges, errors="replace"):
+    def __init__(self, encoder: dict[str, int], bpe_merges):
         self.encoder = encoder
         self.decoder = {v: k for k, v in self.encoder.items()}
-        self.errors = errors  # how to handle errors in decoding
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
         self.bpe_ranks = dict(zip(bpe_merges, range(len(bpe_merges))))
@@ -81,11 +81,17 @@ class Encoder:
 
         return bpe_tokens
 
-    def decode(self, tokens: list[int]) -> str:
+    def decode(
+        self,
+        tokens: list[int],
+        *,
+        errors: Literal["strict", "ignore", "replace"] = "replace",
+    ) -> str:
         text = "".join([self.decoder[token] for token in tokens])
         text = bytearray([self.byte_decoder[c] for c in text]).decode(
-            "utf-8", errors=self.errors
+            "utf-8", errors=errors
         )
+
         return text
 
 

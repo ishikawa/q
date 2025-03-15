@@ -112,22 +112,41 @@ def generate(
     params: GPT2Params,
     n_head: int,
     n_tokens_to_generate: int,
-    update_progress: Optional[Callable[[int], Optional[bool]]] = None,
+    update_progress: Optional[Callable[[list[int]], Optional[bool]]] = None,
 ) -> list[int]:
+    """
+    トークンを生成する関数
+
+    Args:
+        inputs: 入力トークンのリスト
+        params: モデルパラメータ
+        n_head: ヘッド数
+        n_tokens_to_generate: 生成するトークン数
+        update_progress: 進捗更新用コールバック関数。
+                          引数は (tokens) で、tokens は生成されたトークンIDのリスト。
+
+    Returns:
+        生成されたトークンのリスト
+    """
     wte: mx.array = ndarray_to_mlx_deeply(params["wte"])
     wpe: mx.array = ndarray_to_mlx_deeply(params["wpe"])
     blocks: list[dict[str, Any]] = ndarray_to_mlx_deeply(params["blocks"])
     ln_f: dict[str, Any] = ndarray_to_mlx_deeply(params["ln_f"])
 
+    generated_tokens = []
+
     for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
         logits = gpt2(inputs, wte, wpe, blocks, ln_f, n_head=n_head)
         next_id = mx.argmax(logits[-1])
-        inputs.append(int(next_id.item()))  # type: ignore
+        next_token = int(next_id.item())  # type: ignore
+        inputs.append(next_token)  # append prediction to input
+        generated_tokens.append(next_token)
 
         if update_progress:
-            update_progress(1)
+            # コールバックにトークンを渡す
+            update_progress([next_token])
 
-    return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
+    return generated_tokens
 
 
 def ndarray_to_mlx_deeply(d: Any) -> Any:
