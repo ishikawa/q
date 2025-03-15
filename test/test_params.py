@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-import mlx.core as mx
+import numpy as np
 
 from q.params import build_params_from_safetensors
 
@@ -10,37 +10,37 @@ def test_build_params_from_safetensors() -> None:
     # テスト用のモックデータ
     mock_tensors: Dict[str, Any] = {
         # 埋め込み層
-        "wte": mx.zeros((10, 20)),
-        "wpe": mx.zeros((30, 20)),
+        "wte": np.zeros((10, 20)),
+        "wpe": np.zeros((30, 20)),
         # ブロック0のパラメータ
-        "blocks.0.ln_1.g": mx.ones(20),
-        "blocks.0.ln_1.b": mx.zeros(20),
-        "blocks.0.attn.c_attn.w": mx.zeros((20, 60)),
-        "blocks.0.attn.c_attn.b": mx.zeros(60),
-        "blocks.0.attn.c_proj.w": mx.zeros((20, 20)),
-        "blocks.0.attn.c_proj.b": mx.zeros(20),
-        "blocks.0.ln_2.g": mx.ones(20),
-        "blocks.0.ln_2.b": mx.zeros(20),
-        "blocks.0.mlp.c_fc.w": mx.zeros((20, 80)),
-        "blocks.0.mlp.c_fc.b": mx.zeros(80),
-        "blocks.0.mlp.c_proj.w": mx.zeros((80, 20)),
-        "blocks.0.mlp.c_proj.b": mx.zeros(20),
+        "blocks.0.ln_1.g": np.ones(20),
+        "blocks.0.ln_1.b": np.zeros(20),
+        "blocks.0.attn.c_attn.w": np.zeros((20, 60)),
+        "blocks.0.attn.c_attn.b": np.zeros(60),
+        "blocks.0.attn.c_proj.w": np.zeros((20, 20)),
+        "blocks.0.attn.c_proj.b": np.zeros(20),
+        "blocks.0.ln_2.g": np.ones(20),
+        "blocks.0.ln_2.b": np.zeros(20),
+        "blocks.0.mlp.c_fc.w": np.zeros((20, 80)),
+        "blocks.0.mlp.c_fc.b": np.zeros(80),
+        "blocks.0.mlp.c_proj.w": np.zeros((80, 20)),
+        "blocks.0.mlp.c_proj.b": np.zeros(20),
         # ブロック1のパラメータ
-        "blocks.1.ln_1.g": mx.ones(20),
-        "blocks.1.ln_1.b": mx.zeros(20),
-        "blocks.1.attn.c_attn.w": mx.zeros((20, 60)),
-        "blocks.1.attn.c_attn.b": mx.zeros(60),
-        "blocks.1.attn.c_proj.w": mx.zeros((20, 20)),
-        "blocks.1.attn.c_proj.b": mx.zeros(20),
-        "blocks.1.ln_2.g": mx.ones(20),
-        "blocks.1.ln_2.b": mx.zeros(20),
-        "blocks.1.mlp.c_fc.w": mx.zeros((20, 80)),
-        "blocks.1.mlp.c_fc.b": mx.zeros(80),
-        "blocks.1.mlp.c_proj.w": mx.zeros((80, 20)),
-        "blocks.1.mlp.c_proj.b": mx.zeros(20),
+        "blocks.1.ln_1.g": np.ones(20),
+        "blocks.1.ln_1.b": np.zeros(20),
+        "blocks.1.attn.c_attn.w": np.zeros((20, 60)),
+        "blocks.1.attn.c_attn.b": np.zeros(60),
+        "blocks.1.attn.c_proj.w": np.zeros((20, 20)),
+        "blocks.1.attn.c_proj.b": np.zeros(20),
+        "blocks.1.ln_2.g": np.ones(20),
+        "blocks.1.ln_2.b": np.zeros(20),
+        "blocks.1.mlp.c_fc.w": np.zeros((20, 80)),
+        "blocks.1.mlp.c_fc.b": np.zeros(80),
+        "blocks.1.mlp.c_proj.w": np.zeros((80, 20)),
+        "blocks.1.mlp.c_proj.b": np.zeros(20),
         # 最終層の正規化
-        "ln_f.g": mx.ones(20),
-        "ln_f.b": mx.zeros(20),
+        "ln_f.g": np.ones(20),
+        "ln_f.b": np.zeros(20),
     }
     # 関数を実行
     params = build_params_from_safetensors(mock_tensors)
@@ -63,12 +63,12 @@ def test_build_params_from_safetensors() -> None:
     # 5. 最終層の正規化パラメータが正しいことを確認
     assert "g" in params["ln_f"]
     assert "b" in params["ln_f"]
-    assert mx.array_equal(params["ln_f"]["g"], mock_tensors["ln_f.g"])
-    assert mx.array_equal(params["ln_f"]["b"], mock_tensors["ln_f.b"])
+    assert np.array_equal(params["ln_f"]["g"], mock_tensors["ln_f.g"])
+    assert np.array_equal(params["ln_f"]["b"], mock_tensors["ln_f.b"])
     # 6. 特定のブロックの値が正しく設定されていることを確認
-    assert mx.array_equal(
+    assert np.array_equal(
         params["blocks"][1]["ln_1"]["g"], mock_tensors["blocks.1.ln_1.g"]
     )
-    assert mx.array_equal(
+    assert np.array_equal(
         params["blocks"][1]["mlp"]["c_proj"]["b"], mock_tensors["blocks.1.mlp.c_proj.b"]
     )
