@@ -1,5 +1,5 @@
 from pprint import pprint  # noqa: F401
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Generator, Optional, Union
 
 import numpy as np
 
@@ -119,13 +119,37 @@ def generate(
     n_head: int,
     n_tokens_to_generate: int,
     update_progress: Optional[Callable[[int], Optional[bool]]] = None,
-) -> list[int]:
+    stream: bool = False,
+) -> Union[list[int], Generator[int, None, None]]:
+    """
+    トークンを生成する関数
+    
+    Args:
+        inputs: 入力トークンのリスト
+        params: モデルパラメータ
+        n_head: ヘッド数
+        n_tokens_to_generate: 生成するトークン数
+        update_progress: 進捗更新用コールバック関数
+        stream: ストリーミング出力を有効にするかどうか
+        
+    Returns:
+        ストリーミングが有効な場合は生成されたトークンのジェネレータ、
+        そうでない場合は生成されたトークンのリスト
+    """
+    generated_tokens = []
+    
     for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
         logits = gpt2(inputs, **params, n_head=n_head)  # model forward pass
         next_id = np.argmax(logits[-1])  # greedy sampling
-        inputs.append(int(next_id))  # append prediction to input
+        next_token = int(next_id)
+        inputs.append(next_token)  # append prediction to input
+        generated_tokens.append(next_token)
 
         if update_progress:
             update_progress(1)
-
-    return inputs[len(inputs) - n_tokens_to_generate :]  # only return generated ids
+            
+        if stream:
+            yield next_token
+    
+    if not stream:
+        return generated_tokens

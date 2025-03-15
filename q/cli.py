@@ -1,6 +1,7 @@
 import argparse
+import time
 from dataclasses import dataclass
-from typing import Literal
+from typing import Generator, Literal, Optional, Union
 
 from tqdm import tqdm
 
@@ -17,13 +18,41 @@ class GPTResult:
     output_text: str
 
 
+def stream_tokens(token_generator, encoder):
+    """
+    トークンのストリームをテキストのストリームに変換する
+    バッファリング方式でBPEトークナイザーの問題に対処する
+    
+    Args:
+        token_generator: トークンIDのジェネレータ
+        encoder: トークンをデコードするエンコーダー
+        
+    Yields:
+        デコードされた新しいテキスト部分
+    """
+    token_buffer = []
+    last_text = ""
+    
+    for token in token_generator:
+        token_buffer.append(token)
+        current_text = encoder.decode(token_buffer)
+        
+        # 新しく追加されたテキストのみを取得
+        new_text = current_text[len(last_text):]
+        
+        if new_text:  # 新しいテキストがある場合のみ出力
+            yield new_text
+            last_text = current_text
+
+
 def run(
     prompt: str,
     n_tokens_to_generate: int = 40,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
     backend: Literal["mlx", "numpy"] = "numpy",
-) -> GPTResult:
+    stream: bool = False,
+) -> Union[GPTResult, Generator[str, None, None]]:
     import time
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
@@ -44,24 +73,46 @@ def run(
     else:
         generate = generate_numpy
 
-    # generate output ids
+    # 開始時間を記録
     t = time.time()
-    with tqdm(total=n_tokens_to_generate) as pbar:
-        pbar.set_description("Generating")
-        output_ids = generate(
-            input_ids,
-            params=params,
-            n_head=hparams["n_head"],
-            n_tokens_to_generate=n_tokens_to_generate,
-            update_progress=lambda x: pbar.update(x),
-        )
-    sec = time.time() - t
-    tps = n_tokens_to_generate / sec
+    
+    if stream:
+        # ストリーミングモード
+        with tqdm(total=n_tokens_to_generate) as pbar:
+            pbar.set_description("Generating")
+            
+            # トークン生成のジェネレータを取得
+            token_generator = generate(
+                input_ids,
+                params=params,
+                n_head=hparams["n_head"],
+                n_tokens_to_generate=n_tokens_to_generate,
+                update_progress=lambda x: pbar.update(x),
+                stream=True,
+            )
+            
+            # トークンをテキストに変換するストリーミングジェネレータを返す
+            return stream_tokens(token_generator, encoder)
+    else:
+        # 通常モード - 一括生成
+        with tqdm(total=n_tokens_to_generate) as pbar:
+            pbar.set_description("Generating")
+            output_ids = generate(
+                input_ids,
+                params=params,
+                n_head=hparams["n_head"],
+                n_tokens_to_generate=n_tokens_to_generate,
+                update_progress=lambda x: pbar.update(x),
+                stream=False,
+            )
+        
+        sec = time.time() - t
+        tps = n_tokens_to_generate / sec
 
-    # decode the ids back into a string
-    output_text = encoder.decode(output_ids)
+        # decode the ids back into a string
+        output_text = encoder.decode(output_ids)
 
-    return GPTResult(tps=tps, output_text=output_text)
+        return GPTResult(tps=tps, output_text=output_text)
 
 
 def main():
@@ -93,6 +144,11 @@ def main():
         default="numpy",
         help="Backend to use for computation (mlx or numpy)",
     )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Enable streaming output token by token",
+    )
 
     args = parser.parse_args()
 
@@ -101,17 +157,41 @@ def main():
     # print(f"Model size: {args.model_size}")
     # print(f"Models directory: {args.models_dir}")
 
-    r = run(
-        prompt=args.prompt,
-        n_tokens_to_generate=args.n_tokens_to_generate,
-        model_size=args.model_size,
-        models_dir=args.models_dir,
-        backend=args.backend,
-    )
+    if args.stream:
+        # ストリーミングモード
+        print(args.prompt, end="", flush=True)
+        start_time = time.time()
+        
+        # ストリーミング出力を処理
+        for token_text in run(
+            prompt=args.prompt,
+            n_tokens_to_generate=args.n_tokens_to_generate,
+            model_size=args.model_size,
+            models_dir=args.models_dir,
+            backend=args.backend,
+            stream=True,
+        ):
+            print(token_text, end="", flush=True)
+        
+        # 生成速度を計算して表示
+        end_time = time.time()
+        tps = args.n_tokens_to_generate / (end_time - start_time)
+        print("\n")
+        print(f"Generated {tps:.2f} tokens/sec")
+    else:
+        # 通常モード
+        r = run(
+            prompt=args.prompt,
+            n_tokens_to_generate=args.n_tokens_to_generate,
+            model_size=args.model_size,
+            models_dir=args.models_dir,
+            backend=args.backend,
+            stream=False,
+        )
 
-    print(f"Generated {r.tps:.2f} tokens/sec")
-    print()
-    print(args.prompt + r.output_text)
+        print(f"Generated {r.tps:.2f} tokens/sec")
+        print()
+        print(args.prompt + r.output_text)
 
 
 if __name__ == "__main__":
