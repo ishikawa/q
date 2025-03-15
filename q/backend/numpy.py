@@ -118,9 +118,8 @@ def generate(
     params: GPT2Params,
     n_head: int,
     n_tokens_to_generate: int,
-    update_progress: Optional[Callable[[int], Optional[bool]]] = None,
-    stream: bool = False,
-) -> Union[list[int], Generator[int, None, None]]:
+    update_progress: Optional[Callable[[int, list[int]], Optional[bool]]] = None,
+) -> list[int]:
     """
     トークンを生成する関数
     
@@ -129,12 +128,12 @@ def generate(
         params: モデルパラメータ
         n_head: ヘッド数
         n_tokens_to_generate: 生成するトークン数
-        update_progress: 進捗更新用コールバック関数
-        stream: ストリーミング出力を有効にするかどうか
+        update_progress: 進捗更新用コールバック関数。
+                          引数は (count, token_id) で、token_id は生成されたトークンID、
+                          count は生成されたトークン数。
         
     Returns:
-        ストリーミングが有効な場合は生成されたトークンのジェネレータ、
-        そうでない場合は生成されたトークンのリスト
+        生成されたトークンのリスト
     """
     generated_tokens = []
     
@@ -146,10 +145,7 @@ def generate(
         generated_tokens.append(next_token)
 
         if update_progress:
-            update_progress(1)
-            
-        if stream:
-            yield next_token
+            # コールバックにトークンを渡す
+            update_progress(1, [next_token])
     
-    if not stream:
-        return generated_tokens
+    return generated_tokens

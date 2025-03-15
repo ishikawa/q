@@ -22,7 +22,8 @@ class TokenStreamHandler:
     """
     トークンストリームを処理するハンドラークラス
     BPEトークナイザーの問題に対処するためにバッファリング方式を使用
-    日本語などのマルチバイト文字に対応するための改良版
+    
+    TODO: 日本語などのマルチバイト文字のデコード問題を解決する
     """
     def __init__(self, encoder, callback=None):
         """
@@ -33,44 +34,35 @@ class TokenStreamHandler:
         self.encoder = encoder
         self.callback = callback
         self.token_buffer = []
+        self.last_text = ""
         
-        # 完全なテキストを追跡するための変数
-        self.complete_text = ""
-        
-    def __call__(self, count, token_id):
+    def __call__(self, count, tokens):
         """
         新しいトークンが生成されたときに呼び出される
         
         Args:
             count: 更新されたトークン数
-            token_id: 生成されたトークンID
+            tokens: 生成されたトークンのリスト
             
         Returns:
             True: 常に続行を指示
         """
-        if token_id is not None:
+        if tokens:
             # トークンを追加
-            self.token_buffer.append(token_id)
+            self.token_buffer.extend(tokens)
             
-            # 完全なテキストを生成
-            try:
-                # 各トークンを個別にデコードして結合する方法
-                new_token_text = self.encoder.decode([token_id])
+            # 全トークンをデコード
+            current_text = self.encoder.decode(self.token_buffer)
+            
+            # 新しく追加されたテキストのみを取得
+            new_text = current_text[len(self.last_text):]
+            
+            # 新しいテキストがある場合のみコールバックを呼び出す
+            if new_text and self.callback:
+                self.callback(new_text)
                 
-                # 新しいテキストがある場合のみコールバックを呼び出す
-                if new_token_text and self.callback:
-                    self.callback(new_token_text)
-                    
-                self.complete_text += new_token_text
-            except Exception as e:
-                # 例外が発生した場合は完全なバッファを使用
-                full_text = self.encoder.decode(self.token_buffer)
-                new_text = full_text[len(self.complete_text):]
-                
-                if new_text and self.callback:
-                    self.callback(new_text)
-                    
-                self.complete_text = full_text
+            # 最後のテキストを更新
+            self.last_text = current_text
         
         return True  # 生成を続行
 
