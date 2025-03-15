@@ -1,15 +1,15 @@
 import argparse
 from dataclasses import dataclass
+from typing import Literal
 
 from tqdm import tqdm
 
-from q.backend.mlx import generate
+from q.backend.mlx import generate as generate_mlx
+from q.backend.numpy import generate as generate_numpy
 
 from .common import ModelSize
 from .encoder import load_encoder
 from .params import load_hparams_and_params
-
-# from q.backend.numpy import generate
 
 
 @dataclass
@@ -23,6 +23,7 @@ def run(
     n_tokens_to_generate: int = 40,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
+    backend: Literal["mlx", "numpy"] = "mlx",
 ) -> GPTResult:
     import time
 
@@ -35,6 +36,9 @@ def run(
 
     # make sure we are not surpassing the max sequence length of our model
     assert len(input_ids) + n_tokens_to_generate < hparams["n_ctx"]
+
+    # 選択されたバックエンドに基づいて生成関数を選択
+    generate = generate_mlx if backend == "mlx" else generate_numpy
 
     # generate output ids
     t = time.time()
@@ -78,6 +82,13 @@ def main():
         default="models",
         help="Directory where models are stored",
     )
+    parser.add_argument(
+        "--backend",
+        type=str,
+        choices=["mlx", "numpy"],
+        default="mlx",
+        help="Backend to use for computation (mlx or numpy)",
+    )
 
     args = parser.parse_args()
 
@@ -91,6 +102,7 @@ def main():
         n_tokens_to_generate=args.n_tokens_to_generate,
         model_size=args.model_size,
         models_dir=args.models_dir,
+        backend=args.backend,
     )
 
     print(f"Generated {r.tps:.2f} tokens/sec")
