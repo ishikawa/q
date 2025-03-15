@@ -77,22 +77,19 @@ def run(
     t = time.time()
     
     if stream:
-        # ストリーミングモード
-        with tqdm(total=n_tokens_to_generate) as pbar:
-            pbar.set_description("Generating")
-            
-            # トークン生成のジェネレータを取得
-            token_generator = generate(
-                input_ids,
-                params=params,
-                n_head=hparams["n_head"],
-                n_tokens_to_generate=n_tokens_to_generate,
-                update_progress=lambda x: pbar.update(x),
-                stream=True,
-            )
-            
-            # トークンをテキストに変換するストリーミングジェネレータを返す
-            return stream_tokens(token_generator, encoder)
+        # ストリーミングモード - プログレスバーなし
+        # トークン生成のジェネレータを取得
+        token_generator = generate(
+            input_ids,
+            params=params,
+            n_head=hparams["n_head"],
+            n_tokens_to_generate=n_tokens_to_generate,
+            update_progress=None,  # プログレスバーを無効化
+            stream=True,
+        )
+        
+        # トークンをテキストに変換するストリーミングジェネレータを返す
+        return stream_tokens(token_generator, encoder)
     else:
         # 通常モード - 一括生成
         with tqdm(total=n_tokens_to_generate) as pbar:
@@ -162,7 +159,7 @@ def main():
         print(args.prompt, end="", flush=True)
         start_time = time.time()
         
-        # ストリーミング出力を処理
+        # プログレスバーなしでストリーミング出力を処理
         for token_text in run(
             prompt=args.prompt,
             n_tokens_to_generate=args.n_tokens_to_generate,
