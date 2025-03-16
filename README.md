@@ -1,5 +1,7 @@
 # q
 
+![workflow](https://github.com/ishikawa/q/actions/workflows/q.yml/badge.svg)
+
 > Homebrewed small-scale LLM based on GPT-2
 
 I'd like to gain practical experience with transformers, particularly by understanding their architecture and real-world applications, with a focus on small-scale LLMs. To achieve this, I decided to create _a tiny LLM_. First, I plan to study [excellent articles and papers](#References) to understand the basic concepts and architecture. Next, I will build and improve _my own GPT model_. My goal is to integrate it into web applications, games, and iOS apps that interest me.
