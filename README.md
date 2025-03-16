@@ -4,7 +4,7 @@
 
 I'd like to gain practical experience with transformers, particularly by understanding their architecture and real-world applications, with a focus on small-scale LLMs. To achieve this, I decided to create _a tiny LLM_. First, I plan to study [excellent articles and papers](#References) to understand the basic concepts and architecture. Next, I will build and improve _my own GPT model_. My goal is to integrate it into web applications, games, and iOS apps that interest me.
 
-Currently, I am studying by running [OpenAI's GPT-2 model](https://github.com/openai/gpt-2/tree/master). I use an extremely simple numpy-based implementation as a baseline and am experimenting with an implementation using [mlx](https://ml-explore.github.io/mlx/build/html/index.html).
+Currently, I am studying by building a LLM based on [OpenAI's GPT-2 model](https://github.com/openai/gpt-2/tree/master). I use an _extremely simple_ numpy-based model as a baseline and am experimenting with an implementation using [mlx](https://ml-explore.github.io/mlx/build/html/index.html).
 
 ## Install
 
