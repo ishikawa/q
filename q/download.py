@@ -8,11 +8,16 @@ from typing import Literal
 from q.params import save_params_to_safetensors
 
 
-def download_gpt2_files(model_size, model_dir):
+def download_gpt2_files(
+    *,
+    model_size: Literal["124M", "355M", "774M", "1558M"], 
+    model_dir: str, 
+    overwrite: bool = False):
     import requests
     from tqdm import tqdm
 
     assert model_size in ["124M", "355M", "774M", "1558M"]
+
     for filename in [
         "checkpoint",
         "encoder.json",
@@ -22,11 +27,15 @@ def download_gpt2_files(model_size, model_dir):
         "model.ckpt.meta",
         "vocab.bpe",
     ]:
+        filepath = os.path.join(model_dir, filename)
+        if os.path.exists(filepath) and not overwrite:
+            continue
+
         url = "https://openaipublic.blob.core.windows.net/gpt-2/models"
         r = requests.get(f"{url}/{model_size}/{filename}", stream=True)
         r.raise_for_status()
 
-        with open(os.path.join(model_dir, filename), "wb") as f:
+        with open(filepath, "wb") as f:
             file_size = int(r.headers["content-length"])
             chunk_size = 1000
             with tqdm(
@@ -72,7 +81,10 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
 
 
 def download_encoder_hparams_and_params(
-    model_size: Literal["124M", "355M", "774M", "1558M"], models_dir: str
+    *,
+    model_size: Literal["124M", "355M", "774M", "1558M"], 
+    models_dir: str,
+    overwrite: bool = False
 ):
     import tensorflow as tf  # type: ignore
 
@@ -83,7 +95,7 @@ def download_encoder_hparams_and_params(
 
     # download files
     os.makedirs(model_dir, exist_ok=True)
-    download_gpt2_files(model_size, model_dir)
+    download_gpt2_files(model_size=model_size, model_dir=model_dir, overwrite=overwrite)
 
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     assert tf_ckpt_path
@@ -92,7 +104,7 @@ def download_encoder_hparams_and_params(
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams)
 
     # Serialize params to local disk to avoid loading the tf checkpoint files again
-    save_params_to_safetensors(params, params_safetensors_path, overwrite=True)
+    save_params_to_safetensors(params, params_safetensors_path, overwrite=overwrite)
 
     # Remove the tf checkpoint files to save disk space
     for filename in os.listdir(model_dir):
@@ -115,10 +127,18 @@ def main():
         default="models",
         help="Directory where models are stored",
     )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Overwrite existing model files",
+    )
 
     args = parser.parse_args()
 
-    download_encoder_hparams_and_params(args.model_size, args.models_dir)
+    download_encoder_hparams_and_params(
+        model_size=args.model_size, models_dir=args.models_dir, overwrite=args.overwrite
+    )
 
 
 if __name__ == "__main__":
