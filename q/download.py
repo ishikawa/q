@@ -10,9 +10,10 @@ from q.params import save_params_to_safetensors
 
 def download_gpt2_files(
     *,
-    model_size: Literal["124M", "355M", "774M", "1558M"], 
-    model_dir: str, 
-    overwrite: bool = False):
+    model_size: Literal["124M", "355M", "774M", "1558M"],
+    model_dir: str,
+    overwrite: bool = False,
+):
     import requests
     from tqdm import tqdm
 
@@ -82,9 +83,9 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
 
 def download_encoder_hparams_and_params(
     *,
-    model_size: Literal["124M", "355M", "774M", "1558M"], 
+    model_size: Literal["124M", "355M", "774M", "1558M"],
     models_dir: str,
-    overwrite: bool = False
+    overwrite: bool = False,
 ):
     import tensorflow as tf  # type: ignore
 
