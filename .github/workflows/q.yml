@@ -39,3 +39,6 @@ jobs:
       - name: mypy
         run: |
           poetry run mypy --ignore-missing-imports q
+      - name: Check format
+        run: |
+          poetry run black --check q test scripts
