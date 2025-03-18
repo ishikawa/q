@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from .common import ModelSize
 from .encoder import load_encoder
-from .generation import generate
+from .generation import TokenGenerator
 from .gpt2 import GPT2Model
 from .params import load_hparams_and_params
 from .stream import TokenStreamHandler
@@ -33,7 +33,9 @@ def run(
         model_size=model_size,
         models_dir=models_dir,
     )
+
     model = GPT2Model(params, hparams)
+    generator = TokenGenerator(model)
 
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
@@ -56,7 +58,7 @@ def run(
         stream_handler = TokenStreamHandler(encoder=encoder, callback=collect_text)
 
         # トークンを生成してストリームハンドラーで処理
-        for token in generate(model, input_ids, max_new_tokens=n_tokens_to_generate):
+        for token in generator(input_ids, max_new_tokens=n_tokens_to_generate):
             stream_handler([token])
 
         # 生成速度を計算
@@ -67,14 +69,12 @@ def run(
         return GPTResult(tps=tps, output_text="".join(text_chunks))
     else:
         output_ids = []
-        with tqdm(total=n_tokens_to_generate) as pbar:
-            pbar.set_description("Generating")
+        with tqdm(total=n_tokens_to_generate) as progress:
+            progress.set_description("Generating")
 
-            for token in generate(
-                model, input_ids, max_new_tokens=n_tokens_to_generate
-            ):
+            for token in generator(input_ids, max_new_tokens=n_tokens_to_generate):
                 output_ids.append(token)
-                pbar.update(1)
+                progress.update(1)
 
         sec = time.time() - t
         tps = n_tokens_to_generate / sec if sec > 0 else 0
