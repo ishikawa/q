@@ -1,9 +1,34 @@
-from pprint import pprint  # noqa: F401
-from typing import Callable, Optional
+from dataclasses import dataclass
 
 import mlx.core as mx
 
-from q.common import GPT2Params
+from .common import GPT2HyperParams, GPT2Params
+
+
+@dataclass
+class GPT2Output:
+    # Prediction scores of the language modeling head (scores for each vocabulary token before
+    # SoftMax).
+    #
+    # Tensor shape: (n_seq, n_vocab)
+    logits: mx.array
+
+
+class GPT2Model:
+    params: GPT2Params
+    hparams: GPT2HyperParams
+
+    def __init__(self, params: GPT2Params, hparams: GPT2HyperParams):
+        self.params = params
+        self.hparams = hparams
+
+    def __call__(
+        self,
+        /,
+        inputs: list[int],
+    ) -> GPT2Output:
+        logits = gpt2(inputs, **self.params, n_head=self.hparams["n_head"])
+        return GPT2Output(logits=logits)
 
 
 def gelu(x):
@@ -104,46 +129,3 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
     # projection to vocab
     x = layer_norm(x, **ln_f)  # [n_seq, n_embd] -> [n_seq, n_embd]
     return x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
-
-
-def generate(
-    inputs: list[int],
-    *,
-    params: GPT2Params[mx.array],
-    n_head: int,
-    n_tokens_to_generate: int,
-    update_progress: Optional[Callable[[list[int]], Optional[bool]]] = None,
-) -> list[int]:
-    """
-    トークンを生成する関数
-
-    Args:
-        inputs: 入力トークンのリスト
-        params: モデルパラメータ
-        n_head: ヘッド数
-        n_tokens_to_generate: 生成するトークン数
-        update_progress: 進捗更新用コールバック関数。
-                          引数は (tokens) で、tokens は生成されたトークンIDのリスト。
-
-    Returns:
-        生成されたトークンのリスト
-    """
-    wte = params["wte"]
-    wpe = params["wpe"]
-    blocks = params["blocks"]
-    ln_f = params["ln_f"]
-
-    generated_tokens = []
-
-    for _ in range(n_tokens_to_generate):  # auto-regressive decode loop
-        logits = gpt2(inputs, wte, wpe, blocks, ln_f, n_head=n_head)
-        next_id = mx.argmax(logits[-1])
-        next_token = int(next_id.item())  # type: ignore
-        inputs.append(next_token)  # append prediction to input
-        generated_tokens.append(next_token)
-
-        if update_progress:
-            # コールバックにトークンを渡す
-            update_progress([next_token])
-
-    return generated_tokens
