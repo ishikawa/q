@@ -2,11 +2,11 @@
 
 ![workflow](https://github.com/ishikawa/q/actions/workflows/q.yml/badge.svg)
 
-> Homebrewed small-scale LLM based on GPT-2
+> Homebrew small-scale LLM based on GPT-2
 
 I'd like to gain practical experience with transformers, particularly by understanding their architecture and real-world applications, with a focus on small-scale LLMs. To achieve this, I decided to create _a tiny LLM_. First, I plan to study [excellent articles and papers](#References) to understand the basic concepts and architecture. Next, I will build and improve _my own GPT model_. My goal is to integrate it into web applications, games, and iOS apps that interest me.
 
-Currently, I am studying by building a LLM based on [OpenAI's GPT-2 model](https://github.com/openai/gpt-2/tree/master). I use an _extremely simple_ numpy-based model as a baseline and am experimenting with an implementation using [mlx](https://ml-explore.github.io/mlx/build/html/index.html).
+Currently, I am studying by building a LLM based on [OpenAI's GPT-2 model](https://github.com/openai/gpt-2/tree/master). I used an [extremely simple numpy-based model](https://jaykmody.com/blog/gpt-from-scratch/) as a baseline and am experimenting with an implementation using [mlx](https://ml-explore.github.io/mlx/build/html/index.html).
 
 ## Install
 
@@ -32,25 +32,10 @@ Available models:
 
 ## Run
 
-**mlx** (recommended, but requires Apple silicon)
-
-```sh
-$ poetry install --extras mlx
-$ poetry run q --backend mlx "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:00<00:00, 42.19it/s]
-Generated 41.35 tokens/sec
-
-Alan Turing theorized that computers would one day become the most powerful machines on the planet.
-
-The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
-```
-
-numpy
-
 ```sh
 $ poetry run q "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:05<00:00,  7.34it/s]
-Generated 7.32 tokens/sec
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:00<00:00, 42.19it/s]
+Generated 41.35 tokens/sec
 
 Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
@@ -62,7 +47,7 @@ The computer is a machine that can perform complex calculations, and it can perf
 You can enable stream output by setting `--stream` flag:
 
 ```sh
-$ poetry run q --stream --backend mlx "Alan Turing theorized that computers would one day become"
+$ poetry run q --stream "Alan Turing theorized that computers would one day become"
 Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
 The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.

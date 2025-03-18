@@ -5,12 +5,12 @@ from typing import Callable, Optional
 
 from tqdm import tqdm
 
-from q.backend.numpy import generate as generate_numpy
-from q.stream import TokenStreamHandler
-
-from .common import MODEL_BACKEND, ModelSize
+from .common import ModelSize
 from .encoder import load_encoder
+from .generation import TokenGenerator
+from .gpt2 import GPT2Model
 from .params import load_hparams_and_params
+from .stream import TokenStreamHandler
 
 
 @dataclass
@@ -24,29 +24,24 @@ def run(
     n_tokens_to_generate: int = 40,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
-    backend: MODEL_BACKEND = "numpy",
     stream: Optional[Callable[[str], None]] = None,
 ) -> GPTResult:
 
     # load encoder, hparams, and params from the released open-ai gpt-2 files
     encoder = load_encoder(model_size, models_dir)
     hparams, params = load_hparams_and_params(
-        model_size=model_size, models_dir=models_dir, backend=backend
+        model_size=model_size,
+        models_dir=models_dir,
     )
+
+    model = GPT2Model(params, hparams)
+    generator = TokenGenerator(model)
 
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
 
     # make sure we are not surpassing the max sequence length of our model
     assert len(input_ids) + n_tokens_to_generate < hparams["n_ctx"]
-
-    # 選択されたバックエンドに基づいて生成関数を選択
-    if backend == "mlx":
-        from q.backend.mlx import generate as generate_mlx
-
-        generate = generate_mlx  # type: ignore
-    else:
-        generate = generate_numpy  # type: ignore
 
     # 開始時間を記録
     t = time.time()
@@ -63,13 +58,8 @@ def run(
         stream_handler = TokenStreamHandler(encoder=encoder, callback=collect_text)
 
         # トークンを生成してストリームハンドラーで処理
-        output_ids = generate(
-            input_ids,
-            params=params,
-            n_head=hparams["n_head"],
-            n_tokens_to_generate=n_tokens_to_generate,
-            update_progress=stream_handler,
-        )
+        for token in generator(input_ids, max_new_tokens=n_tokens_to_generate):
+            stream_handler([token])
 
         # 生成速度を計算
         sec = time.time() - t
@@ -78,16 +68,13 @@ def run(
         # 結果を返す
         return GPTResult(tps=tps, output_text="".join(text_chunks))
     else:
-        # 通常モード - 一括生成
-        with tqdm(total=n_tokens_to_generate) as pbar:
-            pbar.set_description("Generating")
-            output_ids = generate(
-                input_ids,
-                params=params,
-                n_head=hparams["n_head"],
-                n_tokens_to_generate=n_tokens_to_generate,
-                update_progress=lambda tokens: pbar.update(len(tokens)),
-            )
+        output_ids = []
+        with tqdm(total=n_tokens_to_generate) as progress:
+            progress.set_description("Generating")
+
+            for token in generator(input_ids, max_new_tokens=n_tokens_to_generate):
+                output_ids.append(token)
+                progress.update(1)
 
         sec = time.time() - t
         tps = n_tokens_to_generate / sec if sec > 0 else 0
@@ -121,13 +108,6 @@ def main():
         help="Directory where models are stored",
     )
     parser.add_argument(
-        "--backend",
-        type=str,
-        choices=["mlx", "numpy"],
-        default="numpy",
-        help="Backend to use for computation (mlx or numpy)",
-    )
-    parser.add_argument(
         "--stream",
         action="store_true",
         help="Enable streaming output token by token",
@@ -153,7 +133,6 @@ def main():
             n_tokens_to_generate=args.n_tokens_to_generate,
             model_size=args.model_size,
             models_dir=args.models_dir,
-            backend=args.backend,
             stream=print_chunk,
         )
 
@@ -165,7 +144,6 @@ def main():
             n_tokens_to_generate=args.n_tokens_to_generate,
             model_size=args.model_size,
             models_dir=args.models_dir,
-            backend=args.backend,
         )
 
         print(f"Generated {r.tps:.2f} tokens/sec")

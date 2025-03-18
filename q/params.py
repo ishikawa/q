@@ -2,28 +2,20 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, TypedDict, Union
+from typing import Any, Dict, Union
 
 import numpy as np
+from mlx.core import load as load_safetensors_mlx
 from safetensors.numpy import save_file
 
-from .common import MODEL_BACKEND, MODEL_SIZE, GPT2Params, ModelSize
-
-
-class HyperParameters(TypedDict):
-    n_vocab: int
-    n_ctx: int
-    n_embd: int
-    n_head: int
-    n_layer: int
+from .common import MODEL_SIZE, GPT2HyperParams, GPT2Params, ModelSize
 
 
 def load_hparams_and_params(
     *,
     model_size: ModelSize,
     models_dir: str,
-    backend: MODEL_BACKEND = "numpy",
-) -> tuple[HyperParameters, GPT2Params[Any]]:
+) -> tuple[GPT2HyperParams, GPT2Params]:
     assert model_size in MODEL_SIZE
 
     target_dir = os.path.join(models_dir, model_size)
@@ -34,7 +26,7 @@ def load_hparams_and_params(
             f"Model {model_size} not found in {models_dir}. You need to download it first."
         )
 
-    hparams: HyperParameters = json.load(open(os.path.join(target_dir, "hparams.json")))
+    hparams: GPT2HyperParams = json.load(open(os.path.join(target_dir, "hparams.json")))
 
     # Load params.pkl or combine separate files
     params_safetensors_path = os.path.join(target_dir, "params.safetensors")
@@ -44,17 +36,7 @@ def load_hparams_and_params(
 
     # Load from single file
     if os.path.exists(params_safetensors_path):
-        if backend == "numpy":
-            from safetensors.numpy import load_file as load_safetensors_file_numpy
-
-            params = load_safetensors_file_numpy(params_safetensors_path)
-        elif backend == "mlx":
-            from mlx.core import load as load_safetensors_mlx
-
-            params = load_safetensors_mlx(params_safetensors_path, format="safetensors")
-        else:
-            raise ValueError(f"Unknown backend: {backend}")
-
+        params = load_safetensors_mlx(params_safetensors_path, format="safetensors")
         return hparams, build_params_from_safetensors(params)
 
     # Load from multiple files
@@ -72,26 +54,17 @@ def load_hparams_and_params(
             f"params.safetensors or params_safetensors_nnn not found in {target_dir}. You need to download it first."
         )
 
-    if backend == "numpy":
-        from safetensors.numpy import load as load_safetensors_numpy
-
-        params = load_safetensors_numpy(raw_data)
-    elif backend == "mlx":
-        from mlx.core import load as load_safetensors_mlx
-
-        # mlx.core.load takes file path, not raw data
-        # so we need to write the raw data to a temporary file first
-        with tempfile.NamedTemporaryFile(delete=True) as f:
-            f.write(raw_data)
-            params = load_safetensors_mlx(f.name, format="safetensors")
-    else:
-        raise ValueError(f"Unknown backend: {backend}")
+    # mlx.core.load takes file path, not raw data
+    # so we need to write the raw data to a temporary file first
+    with tempfile.NamedTemporaryFile(delete=True) as f:
+        f.write(raw_data)
+        params = load_safetensors_mlx(f.name, format="safetensors")
 
     return hparams, build_params_from_safetensors(params)
 
 
 def save_params_to_safetensors(
-    params: GPT2Params[Any], output_path: Union[str, Path], overwrite: bool = False
+    params: GPT2Params, output_path: Union[str, Path], overwrite: bool = False
 ) -> None:
     """
     GPT-2のパラメータをsafetensors形式で保存する関数
@@ -154,7 +127,7 @@ def save_params_to_safetensors(
     save_file(flat_params, str(output_path))
 
 
-def build_params_from_safetensors(tensors: dict[str, Any]) -> GPT2Params[Any]:
+def build_params_from_safetensors(tensors: dict[str, Any]) -> GPT2Params:
     """
     safetensors形式のファイルから読み込んだ辞書からGPT-2のパラメータを構築する
 
