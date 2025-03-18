@@ -12,12 +12,12 @@ numpy = "^1.26.4"
 regex = "^2024.5.15"
 tqdm = "^4.66.4"
 safetensors = "^0.4.2"
+mlx = "^0.23.2"
 
 # A list of all of the optional dependencies, some of which are included in the
 # below `extras`. They can be opted into by apps.
 tensorflow = { version = "==2.16.1", optional = true }
 requests = { version = "^2.32.2", optional = true }
-mlx = { version = "^0.23.2", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
@@ -32,7 +32,6 @@ pytest = "^8.2.2"
 
 [tool.poetry.extras]
 download = ["tensorflow", "requests"]
-mlx = ["mlx"]
 
 [tool.poetry.scripts]
 q = "q.cli:main"

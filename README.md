@@ -32,25 +32,10 @@ Available models:
 
 ## Run
 
-**mlx** (recommended, but requires Apple silicon)
-
-```sh
-$ poetry install --extras mlx
-$ poetry run q --backend mlx "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:00<00:00, 42.19it/s]
-Generated 41.35 tokens/sec
-
-Alan Turing theorized that computers would one day become the most powerful machines on the planet.
-
-The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
-```
-
-numpy
-
 ```sh
 $ poetry run q "Alan Turing theorized that computers would one day become"
-Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:05<00:00,  7.34it/s]
-Generated 7.32 tokens/sec
+Generating: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [00:00<00:00, 42.19it/s]
+Generated 41.35 tokens/sec
 
 Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
@@ -62,7 +47,7 @@ The computer is a machine that can perform complex calculations, and it can perf
 You can enable stream output by setting `--stream` flag:
 
 ```sh
-$ poetry run q --stream --backend mlx "Alan Turing theorized that computers would one day become"
+$ poetry run q --stream "Alan Turing theorized that computers would one day become"
 Alan Turing theorized that computers would one day become the most powerful machines on the planet.
 
 The computer is a machine that can perform complex calculations, and it can perform these calculations in a way that is very similar to the human brain.
