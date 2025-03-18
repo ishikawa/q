@@ -109,7 +109,18 @@ def gpt2(
 
     # projection to vocab
     x = layer_norm(x, **ln_f)  # [n_seq, n_embd] -> [n_seq, n_embd]
-    return x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
+
+    # LM head: projection to vocab.
+    #
+    #     [n_seq, n_embd] -> [n_seq, n_vocab]
+    #
+    # By multiplying the final hidden states `x` by the transpose of the token embedding matrix
+    # `wte`, scores (logits) for each token are calculated.
+    #
+    # `x @ wte.T` performs a linear transformation from the dimensionality of the hidden states
+    # (`n_embd`) to the vocabulary size (`n_vocab`). This operation yields the logits for each token
+    # position, effectively serving as the function of the language model head.
+    return x @ wte.T
 
 
 def generate(

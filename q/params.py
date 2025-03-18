@@ -2,20 +2,12 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, TypedDict, Union
+from typing import Any, Dict, Union
 
 import numpy as np
 from safetensors.numpy import save_file
 
-from .common import MODEL_BACKEND, MODEL_SIZE, GPT2Params, ModelSize
-
-
-class HyperParameters(TypedDict):
-    n_vocab: int
-    n_ctx: int
-    n_embd: int
-    n_head: int
-    n_layer: int
+from .common import MODEL_BACKEND, MODEL_SIZE, GPT2HyperParams, GPT2Params, ModelSize
 
 
 def load_hparams_and_params(
@@ -23,7 +15,7 @@ def load_hparams_and_params(
     model_size: ModelSize,
     models_dir: str,
     backend: MODEL_BACKEND = "numpy",
-) -> tuple[HyperParameters, GPT2Params[Any]]:
+) -> tuple[GPT2HyperParams, GPT2Params[Any]]:
     assert model_size in MODEL_SIZE
 
     target_dir = os.path.join(models_dir, model_size)
@@ -34,7 +26,7 @@ def load_hparams_and_params(
             f"Model {model_size} not found in {models_dir}. You need to download it first."
         )
 
-    hparams: HyperParameters = json.load(open(os.path.join(target_dir, "hparams.json")))
+    hparams: GPT2HyperParams = json.load(open(os.path.join(target_dir, "hparams.json")))
 
     # Load params.pkl or combine separate files
     params_safetensors_path = os.path.join(target_dir, "params.safetensors")
