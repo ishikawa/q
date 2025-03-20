@@ -1,11 +1,13 @@
-from typing import Any, Dict
 import os
 import tempfile
+from typing import Any, Dict
+
 import mlx.core as mx
 import pytest
 from safetensors.numpy import load_file
-from q.params import build_params_from_safetensors, save_params_to_safetensors
+
 from q.common import GPT2Params
+from q.params import build_params_from_safetensors, save_params_to_safetensors
 
 
 def test_build_params_from_safetensors() -> None:
