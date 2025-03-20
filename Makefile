@@ -11,6 +11,6 @@ lint:
 	poetry run flake8 q test scripts
 
 mypy:
-	poetry run mypy --ignore-missing-imports q test scripts
+	poetry run mypy q test scripts
 
 check: test lint mypy
