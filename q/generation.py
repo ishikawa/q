@@ -33,7 +33,9 @@ class TokenGenerator:
             生成されたトークン
         """
         for _ in range(max_new_tokens):  # auto-regressive decode loop
-            logits = self.model(inputs).logits  # model forward pass (shape: [1, n_seq, n_vocab])
+            logits = self.model(
+                inputs
+            ).logits  # model forward pass (shape: [1, n_seq, n_vocab])
             # Get the last token's logits in the sequence for batch 0
             last_token_logits = logits[0, -1]  # shape: [n_vocab]
             next_id = mx.argmax(last_token_logits)  # greedy sampling
