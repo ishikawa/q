@@ -1,10 +1,9 @@
 import os
 
 import mlx.core as mx
-import mlx.nn as nn
 import pytest
 
-from q.gpt2 import GPT2Model, GPT2Output
+from q.gpt2 import GPT2Model
 from q.params import load_hparams_and_params
 
 models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
