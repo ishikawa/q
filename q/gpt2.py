@@ -28,7 +28,7 @@ class GPT2Output:
     # used to update the model's parameters through backpropagation. The loss
     # is typically computed using a loss function, such as cross-entropy loss,
     #
-    # Tensor shape: (1, )
+    # Tensor shape: ()
     loss: mx.array | None = None
 
 
