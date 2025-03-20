@@ -7,11 +7,16 @@ from .common import GPT2HyperParams, GPT2Params
 
 @dataclass
 class GPT2Output:
-    # Prediction scores of the language modeling head (scores for each vocabulary token before
-    # SoftMax).
+    # Prediction scores of the language modeling head (scores for each
+    # vocabulary token before SoftMax).
+    #
+    # In language models, "logits" refer to the raw scores obtained from the
+    # model's output layer. These scores correspond to each class or token and
+    # are not yet in a form that can be interpreted as probabilities. Typically,
+    # applying the softmax function to these logits yields the probabilities of
+    # each class or token being.
     #
     # Tensor shape: (batch_size, sequence_length, config.vocab_size)
-    # where batch_size is always 1
     logits: mx.array
 
 
