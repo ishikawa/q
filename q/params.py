@@ -3,10 +3,8 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Union
-
-import numpy as np
-from mlx.core import load as load_safetensors_mlx
-from safetensors.numpy import save_file
+import mlx.core as mx
+from mlx.core import load as load_safetensors_mlx, save_safetensors
 
 from .common import MODEL_SIZE, GPT2HyperParams, GPT2Params, ModelSize
 
@@ -86,45 +84,36 @@ def save_params_to_safetensors(
     if output_path.exists() and not overwrite:
         raise FileExistsError(f"File {output_path} already exists and overwrite=False")
 
-    # パラメータを平坦化してnumpy配列に変換
-    flat_params: Dict[str, np.ndarray] = {}
+    # パラメータを平坦化
+    flat_params: Dict[str, mx.array] = {}
 
     # 埋め込み層とポジショナル埋め込み
-    flat_params["wte"] = np.array(params["wte"])
-    flat_params["wpe"] = np.array(params["wpe"])
+    flat_params["wte"] = params["wte"]
+    flat_params["wpe"] = params["wpe"]
 
     # トランスフォーマーブロック
     for i, block in enumerate(params["blocks"]):
         # 自己注意層
-        flat_params[f"blocks.{i}.ln_1.g"] = np.array(block["ln_1"]["g"])
-        flat_params[f"blocks.{i}.ln_1.b"] = np.array(block["ln_1"]["b"])
-        flat_params[f"blocks.{i}.attn.c_attn.w"] = np.array(
-            block["attn"]["c_attn"]["w"]
-        )
-        flat_params[f"blocks.{i}.attn.c_attn.b"] = np.array(
-            block["attn"]["c_attn"]["b"]
-        )
-        flat_params[f"blocks.{i}.attn.c_proj.w"] = np.array(
-            block["attn"]["c_proj"]["w"]
-        )
-        flat_params[f"blocks.{i}.attn.c_proj.b"] = np.array(
-            block["attn"]["c_proj"]["b"]
-        )
+        flat_params[f"blocks.{i}.ln_1.g"] = block["ln_1"]["g"]
+        flat_params[f"blocks.{i}.ln_1.b"] = block["ln_1"]["b"]
+        flat_params[f"blocks.{i}.attn.c_attn.w"] = block["attn"]["c_attn"]["w"]
+        flat_params[f"blocks.{i}.attn.c_attn.b"] = block["attn"]["c_attn"]["b"]
+        flat_params[f"blocks.{i}.attn.c_proj.w"] = block["attn"]["c_proj"]["w"]
+        flat_params[f"blocks.{i}.attn.c_proj.b"] = block["attn"]["c_proj"]["b"]
 
         # フィードフォワード層
-        flat_params[f"blocks.{i}.ln_2.g"] = np.array(block["ln_2"]["g"])
-        flat_params[f"blocks.{i}.ln_2.b"] = np.array(block["ln_2"]["b"])
-        flat_params[f"blocks.{i}.mlp.c_fc.w"] = np.array(block["mlp"]["c_fc"]["w"])
-        flat_params[f"blocks.{i}.mlp.c_fc.b"] = np.array(block["mlp"]["c_fc"]["b"])
-        flat_params[f"blocks.{i}.mlp.c_proj.w"] = np.array(block["mlp"]["c_proj"]["w"])
-        flat_params[f"blocks.{i}.mlp.c_proj.b"] = np.array(block["mlp"]["c_proj"]["b"])
+        flat_params[f"blocks.{i}.ln_2.g"] = block["ln_2"]["g"]
+        flat_params[f"blocks.{i}.ln_2.b"] = block["ln_2"]["b"]
+        flat_params[f"blocks.{i}.mlp.c_fc.w"] = block["mlp"]["c_fc"]["w"]
+        flat_params[f"blocks.{i}.mlp.c_fc.b"] = block["mlp"]["c_fc"]["b"]
+        flat_params[f"blocks.{i}.mlp.c_proj.w"] = block["mlp"]["c_proj"]["w"]
+        flat_params[f"blocks.{i}.mlp.c_proj.b"] = block["mlp"]["c_proj"]["b"]
 
     # 最終層の正規化
-    flat_params["ln_f.g"] = np.array(params["ln_f"]["g"])
-    flat_params["ln_f.b"] = np.array(params["ln_f"]["b"])
+    flat_params["ln_f.g"] = params["ln_f"]["g"]
+    flat_params["ln_f.b"] = params["ln_f"]["b"]
 
-    # safetensors形式で保存
-    save_file(flat_params, str(output_path))
+    save_safetensors(str(output_path), flat_params)
 
 
 def build_params_from_safetensors(tensors: dict[str, Any]) -> GPT2Params:
