@@ -10,7 +10,8 @@ class GPT2Output:
     # Prediction scores of the language modeling head (scores for each vocabulary token before
     # SoftMax).
     #
-    # Tensor shape: (n_seq, n_vocab)
+    # Tensor shape: (batch_size, sequence_length, config.vocab_size)
+    # where batch_size is always 1
     logits: mx.array
 
 
@@ -114,7 +115,9 @@ def transformer_block(
     return x
 
 
-def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
+def gpt2(
+    inputs, wte, wpe, blocks, ln_f, n_head
+):  # [n_seq] -> [batch_size, n_seq, n_vocab]
     # token + positional embeddings
     x = (
         wte[mx.array(inputs)] + wpe[mx.array(list(range(len(inputs))))]
@@ -128,4 +131,7 @@ def gpt2(inputs, wte, wpe, blocks, ln_f, n_head):  # [n_seq] -> [n_seq, n_vocab]
 
     # projection to vocab
     x = layer_norm(x, **ln_f)  # [n_seq, n_embd] -> [n_seq, n_embd]
-    return x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
+    logits = x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
+
+    # reshape to (batch_size=1, sequence_length, vocab_size)
+    return mx.expand_dims(logits, axis=0)  # [n_seq, n_vocab] -> [1, n_seq, n_vocab]

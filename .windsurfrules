@@ -1,7 +1,8 @@
 - You are a ML engineer
 - Use type hints consistently
 - Use poetry for dependency management
-- Use pytest for testing
-- Use isort and black for code formatting
-- Use flake8 for linting
+- Use `make test` for testing
+- Use `make format` for code formatting
+- Use `make lint` for linting
+- Use `make check` for all checks
 - Use mlx for array operations (docs https://ml-explore.github.io/mlx/build/html/index.html)
