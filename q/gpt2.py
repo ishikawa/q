@@ -55,15 +55,15 @@ class GPT2Model:
             targets = mx.array(inputs[1:])  # Remove the +[0] padding
 
             # Take logits for all positions except the last one
-            # Shape: [1, sequence_length-1, vocab_size]
+            # Shape: (1, sequence_length-1, vocab_size)
             logits_for_loss = logits[0, :-1, :]
 
-            # Reshape logits to [sequence_length-1, vocab_size]
+            # Reshape logits to (sequence_length-1, vocab_size)
             logits_2d = mx.reshape(logits_for_loss, (-1, logits_for_loss.shape[-1]))
 
             # Use sparse categorical cross-entropy with targets as class indices
-            # Targets shape: [sequence_length-1]
-            # Logits shape: [sequence_length-1, vocab_size]
+            # Targets shape: (sequence_length-1)
+            # Logits shape: (sequence_length-1, vocab_size)
             loss = nn.losses.cross_entropy(logits_2d, targets)
 
             # Average loss across sequence positions
@@ -92,88 +92,88 @@ def layer_norm(x, g, b, eps: float = 1e-5):
     return g * x + b  # scale and offset with gamma/beta params
 
 
-def linear(x, w, b):  # [m, in], [in, out], [out] -> [m, out]
+def linear(x, w, b):  # (m, in), (in, out), (out) -> (m, out)
     return x @ w + b
 
 
-def ffn(x, c_fc, c_proj):  # [n_seq, n_embd] -> [n_seq, n_embd]
+def ffn(x, c_fc, c_proj):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # project up
-    a = gelu(linear(x, **c_fc))  # [n_seq, n_embd] -> [n_seq, 4*n_embd]
+    a = gelu(linear(x, **c_fc))  # (n_seq, n_embd) -> (n_seq, 4*n_embd)
 
     # project back down
-    x = linear(a, **c_proj)  # [n_seq, 4*n_embd] -> [n_seq, n_embd]
+    x = linear(a, **c_proj)  # (n_seq, 4*n_embd) -> (n_seq, n_embd)
 
     return x
 
 
 def attention(
     q, k, v, mask
-):  # [n_q, d_k], [n_k, d_k], [n_k, d_v], [n_q, n_k] -> [n_q, d_v]
+):  # (n_q, d_k), (n_k, d_k), (n_k, d_v), (n_q, n_k) -> (n_q, d_v)
     return softmax(q @ k.T / mx.sqrt(q.shape[-1]) + mask) @ v
 
 
-def mha(x, c_attn, c_proj, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
+def mha(x, c_attn, c_proj, n_head):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # qkv projection
-    x = linear(x, **c_attn)  # [n_seq, n_embd] -> [n_seq, 3*n_embd]
+    x = linear(x, **c_attn)  # (n_seq, n_embd) -> (n_seq, 3*n_embd)
 
     # split into qkv
-    qkv = mx.split(x, 3, axis=-1)  # [n_seq, 3*n_embd] -> [3, n_seq, n_embd]
+    qkv = mx.split(x, 3, axis=-1)  # (n_seq, 3*n_embd) -> (3, n_seq, n_embd)
 
     # split into heads
     qkv_heads = list(
         map(lambda x: mx.split(x, n_head, axis=-1), qkv)
-    )  # [3, n_seq, n_embd] -> [3, n_head, n_seq, n_embd/n_head]
+    )  # (3, n_seq, n_embd) -> (3, n_head, n_seq, n_embd/n_head)
 
     # causal mask to hide future inputs from being attended to
-    causal_mask = (1 - mx.tri(x.shape[0], dtype=x.dtype)) * -1e10  # [n_seq, n_seq]
+    causal_mask = (1 - mx.tri(x.shape[0], dtype=x.dtype)) * -1e10  # (n_seq, n_seq)
 
     # perform attention over each head
     out_heads = [
         attention(q, k, v, causal_mask) for q, k, v in zip(*qkv_heads)
-    ]  # [3, n_head, n_seq, n_embd/n_head] -> [n_head, n_seq, n_embd/n_head]
+    ]  # (3, n_head, n_seq, n_embd/n_head) -> (n_head, n_seq, n_embd/n_head)
 
     # merge heads
     x = mx.concatenate(
         out_heads, axis=-1
-    )  # [n_head, n_seq, n_embd/n_head] -> [n_seq, n_embd]
+    )  # (n_head, n_seq, n_embd/n_head) -> (n_seq, n_embd)
 
     # out projection
-    x = linear(x, **c_proj)  # [n_seq, n_embd] -> [n_seq, n_embd]
+    x = linear(x, **c_proj)  # (n_seq, n_embd) -> (n_seq, n_embd)
 
     return x
 
 
 def transformer_block(
     x, mlp, attn, ln_1, ln_2, n_head
-):  # [n_seq, n_embd] -> [n_seq, n_embd]
+):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # multi-head causal self attention
     x = x + mha(
         layer_norm(x, **ln_1), **attn, n_head=n_head
-    )  # [n_seq, n_embd] -> [n_seq, n_embd]
+    )  # (n_seq, n_embd) -> (n_seq, n_embd)
 
     # position-wise feed forward network
-    x = x + ffn(layer_norm(x, **ln_2), **mlp)  # [n_seq, n_embd] -> [n_seq, n_embd]
+    x = x + ffn(layer_norm(x, **ln_2), **mlp)  # (n_seq, n_embd) -> (n_seq, n_embd)
 
     return x
 
 
 def gpt2(
     inputs, wte, wpe, blocks, ln_f, n_head
-):  # [n_seq] -> [batch_size, n_seq, n_vocab]
+):  # (n_seq) -> (batch_size, n_seq, n_vocab)
     # token + positional embeddings
     x = (
         wte[mx.array(inputs)] + wpe[mx.array(list(range(len(inputs))))]
-    )  # [n_seq] -> [n_seq, n_embd]
+    )  # (n_seq) -> (n_seq, n_embd)
 
     # forward pass through n_layer transformer blocks
     for block in blocks:
         x = transformer_block(
             x, **block, n_head=n_head
-        )  # [n_seq, n_embd] -> [n_seq, n_embd]
+        )  # (n_seq, n_embd) -> (n_seq, n_embd)
 
     # projection to vocab
-    x = layer_norm(x, **ln_f)  # [n_seq, n_embd] -> [n_seq, n_embd]
-    logits = x @ wte.T  # [n_seq, n_embd] -> [n_seq, n_vocab]
+    x = layer_norm(x, **ln_f)  # (n_seq, n_embd) -> (n_seq, n_embd)
+    logits = x @ wte.T  # (n_seq, n_embd) -> (n_seq, n_vocab)
 
     # reshape to (batch_size=1, sequence_length, vocab_size)
-    return mx.expand_dims(logits, axis=0)  # [n_seq, n_vocab] -> [1, n_seq, n_vocab]
+    return mx.expand_dims(logits, axis=0)  # (n_seq, n_vocab) -> (1, n_seq, n_vocab)
