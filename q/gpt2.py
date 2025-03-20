@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import mlx.core as mx
+import mlx.nn as nn
 
 from .common import GPT2HyperParams, GPT2Params
 
@@ -19,6 +20,17 @@ class GPT2Output:
     # Tensor shape: (batch_size, sequence_length, config.vocab_size)
     logits: mx.array
 
+    # Language modeling loss for next-token prediction.
+    #
+    # In language models, "loss" refers to the computed value that quantifies
+    # how well the model's predictions align with the actual target values.
+    # It is a measure of the model's performance during training, and it is
+    # used to update the model's parameters through backpropagation. The loss
+    # is typically computed using a loss function, such as cross-entropy loss,
+    #
+    # Tensor shape: (1, )
+    loss: mx.array | None = None
+
 
 class GPT2Model:
     params: GPT2Params
@@ -32,8 +44,33 @@ class GPT2Model:
         self,
         /,
         inputs: list[int],
+        *,
+        compute_loss: bool = False,
     ) -> GPT2Output:
         logits = gpt2(inputs, **self.params, n_head=self.hparams["n_head"])
+
+        if compute_loss and len(inputs) > 1:  # Need at least 2 tokens to compute loss
+            # For causal language modeling, targets are the input tokens shifted one position to the right
+            # We want to predict the next token for each position in the sequence
+            targets = mx.array(inputs[1:])  # Remove the +[0] padding
+
+            # Take logits for all positions except the last one
+            # Shape: [1, sequence_length-1, vocab_size]
+            logits_for_loss = logits[0, :-1, :]
+
+            # Reshape logits to [sequence_length-1, vocab_size]
+            logits_2d = mx.reshape(logits_for_loss, (-1, logits_for_loss.shape[-1]))
+
+            # Use sparse categorical cross-entropy with targets as class indices
+            # Targets shape: [sequence_length-1]
+            # Logits shape: [sequence_length-1, vocab_size]
+            loss = nn.losses.cross_entropy(logits_2d, targets)
+
+            # Average loss across sequence positions
+            loss = mx.mean(loss)
+
+            return GPT2Output(logits=logits, loss=loss)
+
         return GPT2Output(logits=logits)
 
 

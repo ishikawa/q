@@ -3,8 +3,10 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Union
+
 import mlx.core as mx
-from mlx.core import load as load_safetensors_mlx, save_safetensors
+from mlx.core import load as load_safetensors_mlx
+from mlx.core import save_safetensors
 
 from .common import MODEL_SIZE, GPT2HyperParams, GPT2Params, ModelSize
 
