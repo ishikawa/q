@@ -1,11 +1,9 @@
 import logging
 from typing import List, Optional, Tuple
 
+from lm_eval.api.instance import Instance
 from lm_eval.api.model import TemplateLM
-from lm_eval.models.utils import (
-    Collator,
-    pad_and_concat,
-)
+from lm_eval.models.utils import Collator, pad_and_concat
 from tqdm import tqdm
 
 from .common import ModelSize
@@ -17,7 +15,10 @@ from .params import load_hparams_and_params
 eval_logger = logging.getLogger(__name__)
 
 
-class MyCustomLM(TemplateLM):
+class QLM(TemplateLM):
+    """
+    A custom language model class for lm-evaluation-harness.
+    """
 
     model: GPT2Model
 
@@ -54,7 +55,7 @@ class MyCustomLM(TemplateLM):
         """
         Tokenize a string using the model's tokenizer and return a list of token IDs.
         """
-        return self.encoder.encode(string, **kwargs)
+        return self.encoder.encode(string)
 
     def _loglikelihood_tokens(
         self,
@@ -211,3 +212,13 @@ class MyCustomLM(TemplateLM):
         pbar.close()
 
         return re_ord.get_original(res)
+
+    def generate_until(
+        self, requests: List[Instance], disable_tqdm: bool = False
+    ) -> List[str]:
+        raise NotImplementedError()
+
+    def loglikelihood_rolling(
+        self, requests: List[Instance], disable_tqdm: bool = False
+    ) -> List[float]:
+        raise NotImplementedError()
