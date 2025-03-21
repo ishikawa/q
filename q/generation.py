@@ -46,7 +46,7 @@ class TokenGenerator:
 
         if max_length > self.model.hparams["n_ctx"]:
             raise ValueError(
-                f"max_length {max_length} exceeds model context length {self.model.hparams.n_ctx}."
+                f"max_length {max_length} exceeds model context length {self.model.hparams['n_ctx']}."
             )
 
         for _ in range(max_new_tokens):  # auto-regressive decode loop

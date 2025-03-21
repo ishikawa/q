@@ -7,11 +7,6 @@ from q.params import load_hparams_and_params
 
 
 @pytest.fixture(scope="session")
-def encoder():
-    return load_encoder()
-
-
-@pytest.fixture(scope="session")
 def model():
     hparams, params = load_hparams_and_params()
     return GPT2Model(params, hparams)
