@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import Generator, Optional
 
 import mlx.core as mx
 
@@ -17,21 +17,38 @@ class TokenGenerator:
     def __call__(
         self,
         /,
+        # token ids of the input string
         inputs: list[int],
         *,
+        # The maximum length the generated tokens can have. Corresponds to the
+        # length of the input prompt + `max_new_tokens`. Its effect is overridden
+        # by `max_new_tokens`, if also set.
+        max_length: int = 1024,
         # The maximum numbers of tokens to generate, ignoring the number of tokens in the prompt.
-        max_new_tokens: int,
+        max_new_tokens: Optional[int] = None,
     ) -> Generator[int, None, None]:
         """
-        トークンを生成する関数
-
-        Args:
-            inputs: 入力トークンのリスト
-            max_new_tokens: 生成するトークン数
-
-        Yields:
-            生成されたトークン
+        generate method for text generation
         """
+        # calculate max_length and max_new_tokens
+        if max_new_tokens is None:
+            if len(inputs) > max_length:
+                raise ValueError(
+                    f"Input length {len(inputs)} exceeds max_length {max_length}."
+                )
+
+            max_new_tokens = max_length - len(inputs)
+        else:
+            max_length = len(inputs) + max_new_tokens
+
+        assert max_length is not None
+        assert max_new_tokens is not None
+
+        if max_length > self.model.hparams["n_ctx"]:
+            raise ValueError(
+                f"max_length {max_length} exceeds model context length {self.model.hparams.n_ctx}."
+            )
+
         for _ in range(max_new_tokens):  # auto-regressive decode loop
             logits = self.model(
                 inputs
