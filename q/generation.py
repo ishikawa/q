@@ -23,7 +23,7 @@ class TokenGenerator:
         # The maximum length the generated tokens can have. Corresponds to the
         # length of the input prompt + `max_new_tokens`. Its effect is overridden
         # by `max_new_tokens`, if also set.
-        max_length: int = 1024,
+        max_length: int = 40,
         # The maximum numbers of tokens to generate, ignoring the number of tokens in the prompt.
         max_new_tokens: Optional[int] = None,
     ) -> Generator[int, None, None]:
@@ -48,6 +48,9 @@ class TokenGenerator:
             raise ValueError(
                 f"max_length {max_length} exceeds model context length {self.model.hparams['n_ctx']}."
             )
+
+        # clone inputs to avoid modifying the original list
+        inputs = inputs.copy()
 
         for _ in range(max_new_tokens):  # auto-regressive decode loop
             logits = self.model(
