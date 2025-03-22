@@ -10,12 +10,7 @@ test:
 lint:
 	poetry run flake8 q test scripts
 
-<<<<<<< HEAD
-mypy:
-	poetry run mypy q test scripts
-=======
 type-check:
 	poetry run pyright
->>>>>>> origin/main
 
 check: test lint type-check
