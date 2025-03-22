@@ -21,7 +21,8 @@ class GPTResult:
 
 def run(
     prompt: str,
-    n_tokens_to_generate: int = 40,
+    max_length: int = 40,
+    max_new_tokens: Optional[int] = None,
     model_size: ModelSize = "124M",
     models_dir: str = "models",
     stream: Optional[Callable[[str], None]] = None,
@@ -40,8 +41,9 @@ def run(
     # encode the input string using the BPE tokenizer
     input_ids = encoder.encode(prompt)
 
-    # make sure we are not surpassing the max sequence length of our model
-    assert len(input_ids) + n_tokens_to_generate < hparams["n_ctx"]
+    n_tokens_to_generate = max_length - len(input_ids)
+    if max_new_tokens is not None:
+        n_tokens_to_generate = max_new_tokens
 
     # 開始時間を記録
     t = time.time()
@@ -58,7 +60,9 @@ def run(
         stream_handler = TokenStreamHandler(encoder=encoder, callback=collect_text)
 
         # トークンを生成してストリームハンドラーで処理
-        for token in generator(input_ids, max_new_tokens=n_tokens_to_generate):
+        for token in generator(
+            input_ids, max_length=max_length, max_new_tokens=max_new_tokens
+        ):
             stream_handler([token])
 
         # 生成速度を計算
@@ -89,10 +93,15 @@ def main():
     parser = argparse.ArgumentParser(description="Main script for text generation.")
     parser.add_argument("prompt", type=str, help="Input prompt for text generation")
     parser.add_argument(
-        "--n_tokens_to_generate",
+        "--max-length",
         type=int,
         default=40,
-        help="Number of tokens to generate",
+        help="Maximum length of tokens to generate",
+    )
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        help="The maximum numbers of tokens to generate, ignoring the number of tokens in the prompt",
     )
     parser.add_argument(
         "--model_size",
@@ -115,11 +124,6 @@ def main():
 
     args = parser.parse_args()
 
-    # print(f"Prompt: {args.prompt}")
-    # print(f"Number of tokens to generate: {args.n_tokens_to_generate}")
-    # print(f"Model size: {args.model_size}")
-    # print(f"Models directory: {args.models_dir}")
-
     # プロンプトを表示（ストリーミングモードの場合）
     if args.stream:
         print(args.prompt, end="", flush=True)
@@ -130,7 +134,8 @@ def main():
 
         r = run(
             prompt=args.prompt,
-            n_tokens_to_generate=args.n_tokens_to_generate,
+            max_length=args.max_length,
+            max_new_tokens=args.max_new_tokens,
             model_size=args.model_size,
             models_dir=args.models_dir,
             stream=print_chunk,
@@ -141,7 +146,8 @@ def main():
     else:
         r = run(
             prompt=args.prompt,
-            n_tokens_to_generate=args.n_tokens_to_generate,
+            max_length=args.max_length,
+            max_new_tokens=args.max_new_tokens,
             model_size=args.model_size,
             models_dir=args.models_dir,
         )
