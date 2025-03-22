@@ -5,7 +5,7 @@ def test_prompt_alan_turing():
     prompt = "Alan Turing theorized that computers would one day become"
     r = q.cli.run(
         prompt=prompt,
-        n_tokens_to_generate=40,
+        max_length=50,
         model_size="124M",
         models_dir="models",
     )

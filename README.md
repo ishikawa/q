@@ -20,7 +20,7 @@ You have to download an OpenAI GPT-2 model parameters before executing `q`:
 
 ```sh
 $ poetry install --extras download
-$ poetry run download --model_size 124M
+$ poetry run download --model-size 124M
 ```
 
 Available models:
