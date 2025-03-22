@@ -104,14 +104,14 @@ def main():
         help="The maximum numbers of tokens to generate, ignoring the number of tokens in the prompt",
     )
     parser.add_argument(
-        "--model_size",
+        "--model-size",
         type=str,
         choices=["124M", "355M", "774M", "1558M"],
         default="124M",
         help="Size of the model to use",
     )
     parser.add_argument(
-        "--models_dir",
+        "--models-dir",
         type=str,
         default="models",
         help="Directory where models are stored",
