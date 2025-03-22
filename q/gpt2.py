@@ -34,6 +34,7 @@ class GPT2Output:
 
 class GPT2Model:
     params: GPT2Params
+
     hparams: GPT2HyperParams
 
     def __init__(self, params: GPT2Params, hparams: GPT2HyperParams):
@@ -75,7 +76,7 @@ class GPT2Model:
 
 
 def gelu(x):
-    return 0.5 * x * (1 + mx.tanh(mx.sqrt(2 / mx.pi) * (x + 0.044715 * x**3)))
+    return 0.5 * x * (1 + mx.tanh(mx.sqrt(mx.array(2 / mx.pi)) * (x + 0.044715 * x**3)))
 
 
 def softmax(x):
@@ -125,7 +126,9 @@ def mha(x, c_attn, c_proj, n_head):  # (n_seq, n_embd) -> (n_seq, n_embd)
     )  # (3, n_seq, n_embd) -> (3, n_head, n_seq, n_embd/n_head)
 
     # causal mask to hide future inputs from being attended to
-    causal_mask = (1 - mx.tri(x.shape[0], dtype=x.dtype)) * -1e10  # (n_seq, n_seq)
+    causal_mask = (
+        1 - mx.tri(n=x.shape[0], m=x.shape[0], k=0, dtype=x.dtype)
+    ) * -1e10  # (n_seq, n_seq)
 
     # perform attention over each head
     out_heads = [

@@ -10,7 +10,7 @@ test:
 lint:
 	poetry run flake8 q test scripts
 
-mypy:
-	poetry run mypy --ignore-missing-imports q test scripts
+type-check:
+	poetry run pyright
 
-check: test lint mypy
+check: test lint type-check
