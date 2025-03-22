@@ -8,6 +8,7 @@ from q.gpt2 import GPT2Model
 from q.params import load_hparams_and_params
 
 
+@pytest.fixture(scope="session")
 def model_size() -> ModelSize:
     return "124M"
 
