@@ -1,12 +1,10 @@
 from unittest.mock import Mock
 
-from q.encoder import load_encoder
+from q.encoder import Encoder
 from q.stream import TokenStreamHandler
 
 
-def test_init():
-    """TokenStreamHandlerの初期化テスト"""
-    encoder = load_encoder("124M", "models")
+def test_init(encoder: Encoder):
     callback = Mock()
 
     handler = TokenStreamHandler(encoder, callback)
@@ -17,9 +15,7 @@ def test_init():
     assert handler.last_text == ""
 
 
-def test_call_with_tokens():
-    """トークン処理の基本機能テスト"""
-    encoder = load_encoder("124M", "models")
+def test_call_with_tokens(encoder: Encoder):
     callback = Mock()
 
     handler = TokenStreamHandler(encoder, callback)
@@ -37,9 +33,7 @@ def test_call_with_tokens():
     callback.assert_called_once()  # コールバックが呼び出されたことを確認
 
 
-def test_call_with_empty_tokens():
-    """空のトークンリストでの動作テスト"""
-    encoder = load_encoder("124M", "models")
+def test_call_with_empty_tokens(encoder: Encoder):
     callback = Mock()
 
     handler = TokenStreamHandler(encoder, callback)
@@ -54,9 +48,8 @@ def test_call_with_empty_tokens():
     callback.assert_not_called()  # コールバックが呼び出されていないことを確認
 
 
-def test_accumulate_tokens():
+def test_accumulate_tokens(encoder: Encoder):
     """複数回のトークン追加テスト"""
-    encoder = load_encoder("124M", "models")
     callback = Mock()
 
     handler = TokenStreamHandler(encoder, callback)
@@ -74,10 +67,7 @@ def test_accumulate_tokens():
     assert callback.call_count == 2
 
 
-def test_no_callback():
-    """コールバックなしの場合のテスト"""
-    encoder = load_encoder("124M", "models")
-
+def test_no_callback(encoder: Encoder):
     # コールバックを指定せずにハンドラーを初期化
     handler = TokenStreamHandler(encoder)
 
@@ -90,9 +80,8 @@ def test_no_callback():
     assert len(handler.last_text) > 0
 
 
-def test_unicode_decode_error_handling():
+def test_unicode_decode_error_handling(encoder: Encoder):
     """UnicodeDecodeErrorのハンドリングテスト"""
-    encoder = load_encoder("124M", "models")
     callback = Mock()
 
     handler = TokenStreamHandler(encoder, callback)

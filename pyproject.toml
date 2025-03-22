@@ -23,13 +23,13 @@ numpy = { version = "^1.26.4", optional = true }
 black = "^24.4.2"
 flake8 = "^7.1.0"
 isort = "^5.13.2"
-mypy = "^1.10.1"
 types-tqdm = "^4.66.0.20240417"
 types-regex = "^2024.5.15.20240519"
 types-requests = "^2.32.0.20240712"
 types-tensorflow = "^2.16.0.20240627"
 pytest = "^8.2.2"
 lm-eval = "0.4.8"
+pyright = "^1.1.397"
 
 [tool.poetry.extras]
 download = ["tensorflow", "requests", "numpy"]
@@ -41,3 +41,10 @@ download = "q.download:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+include = ["q", "test"]
+exclude = ["**/__pycache__"]
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false

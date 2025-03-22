@@ -5,6 +5,7 @@ import os
 import re
 from typing import Literal
 
+from q.common import GPT2Params
 from q.params import save_params_to_safetensors
 
 
@@ -52,7 +53,7 @@ def download_gpt2_files(
                     pbar.update(chunk_size)
 
 
-def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
+def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams) -> GPT2Params:
     import numpy as np
     import tensorflow as tf  # type: ignore
 
@@ -78,7 +79,7 @@ def load_gpt2_params_from_tf_ckpt(tf_ckpt_path, hparams):
         else:
             set_in_nested_dict(params, name.split("/"), array)
 
-    return params
+    return params  # type: ignore
 
 
 def download_encoder_hparams_and_params(

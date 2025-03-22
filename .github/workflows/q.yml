@@ -36,9 +36,9 @@ jobs:
       - name: flake8
         run: |
           poetry run flake8 q test scripts
-      - name: mypy
+      - name: Check type
         run: |
-          poetry run mypy --ignore-missing-imports q
+          poetry run pyright
       - name: Check format
         run: |
           poetry run black --check q test scripts
