@@ -117,14 +117,14 @@ def download_encoder_hparams_and_params(
 def main():
     parser = argparse.ArgumentParser(description="Main script for text generation.")
     parser.add_argument(
-        "--model_size",
+        "--model-size",
         type=str,
         choices=["124M", "355M", "774M", "1558M"],
         default="124M",
         help="Size of the model to use",
     )
     parser.add_argument(
-        "--models_dir",
+        "--models-dir",
         type=str,
         default="models",
         help="Directory where models are stored",
