@@ -1,6 +1,8 @@
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, Iterator, List, Optional, Tuple
 
+import torch
+import torch.nn.functional as F
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import TemplateLM
 from lm_eval.models.utils import Collator, pad_and_concat
@@ -26,10 +28,13 @@ class QLM(TemplateLM):
 
     generator: TokenGenerator
 
+    max_length: int
+
     def __init__(
         self,
         model_size: ModelSize = "124M",
         models_dir: str = "models",
+        max_length: int = 1024,
     ) -> None:
         super().__init__()
 
@@ -42,9 +47,10 @@ class QLM(TemplateLM):
 
         self.model = GPT2Model(params, hparams)
         self.generator = TokenGenerator(self.model)
+        self.max_length = max_length
 
     @property
-    def eot_token_id(self) -> Optional[int]:
+    def eot_token_id(self):
         # In the original GPT-2 implementation, there is no explicit EOS (End of
         # Sequence) token. citeturn0search7 Consequently, during text
         # generation, the model may continue producing tokens until it reaches
@@ -61,7 +67,8 @@ class QLM(TemplateLM):
         self,
         requests: List[Tuple[Tuple[str, str], List[int], List[int]]],
         disable_tqdm: bool = False,
-        override_bs: int = None,
+        override_bs: Optional[int] = None,
+        **kwargs,
     ) -> List[Tuple[float, bool]]:
         # TODO: implement some kind of efficient-request-middleware that lumps
         # together requests with the same context
@@ -96,21 +103,25 @@ class QLM(TemplateLM):
 
         # automatic (variable) batch size detection for vectorization
         # pull longest context sample from request
-        chunks = re_ord.get_batched(n=1)
+        chunks: Iterator[Iterator[tuple[Any, list[int], list[int]]]] = (
+            re_ord.get_batched(n=1)
+        )
+
         pbar = tqdm(
             total=len(requests),
             disable=(disable_tqdm or (self.rank != 0)),
             desc="Running loglikelihood requests",
         )
+
         for chunk in chunks:
-            inps = []
-            cont_toks_list = []
-            inplens = []
+            inps: list[list[int]] = []
+            cont_toks_list: list[list[int]] = []
+            inplens: list[int] = []
 
             conts = []
             encoder_attns = []
 
-            padding_len_inp = None
+            padding_len_inp = 0
             padding_len_cont = None
             # because vectorizing is annoying, we first convert each (context, continuation) pair to padded
             # tensors, then we pack them together into a batch, call the model, and then pick it all apart
@@ -132,18 +143,27 @@ class QLM(TemplateLM):
                 # when too long to fit in context, truncate from the left
                 total_length = len(context_enc) + len(continuation_enc)
                 if total_length > self.max_length + 1:
-                    eval_logger.warn(
+                    eval_logger.warning(
                         f"Combined length of context ({len(context_enc)}) and continuation ({len(continuation_enc)}) "
                         f"exceeds model's maximum length ({self.max_length}). "
                         f"Truncating {total_length - self.max_length + 1} tokens from the left."
                     )
 
-                inp = torch.tensor(
-                    (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1],
-                    dtype=torch.long,
-                    device=self.device,
+                # context_enc と continuation_enc を結合したリストの末尾から
+                # (self.max_length + 1) 個の要素を取得し、その中からさらに末尾の
+                # 1要素を除いた部分を抽出します。​
+                inp = (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1]
+                inplen = len(inp)
+
+                padding_len_inp = (
+                    max(padding_len_inp, inplen)
+                    if padding_len_inp is not None
+                    else inplen
                 )
-                (inplen,) = inp.shape
+
+                inps.append(inp)  # [1, inp_length]
+                cont_toks_list.append(continuation_enc)
+                inplens.append(inplen)
 
             # create encoder attn mask and batched conts, if seq2seq
             call_kwargs = {}
@@ -222,3 +242,28 @@ class QLM(TemplateLM):
         self, requests: List[Instance], disable_tqdm: bool = False
     ) -> List[float]:
         raise NotImplementedError()
+
+    def _model_call(self, inputs: torch.Tensor, attn_mask=None, labels=None):
+        """
+        :param inputs: torch.Tensor
+            A torch tensor of shape [batch, (sequence_ctx + sequence_cont)] or of shape
+            [batch, sequence_ctx]. the size of sequence may vary from call to call
+        :param attn_mask: torch.Tensor, optional
+            A torch tensor of shape [batch, (sequence_ctx + sequence_cont)]. Only passed
+            (and must be passed) if self.AUTO_MODEL_CLASS is transformers.AutoModelForSeq2SeqLM
+        :param labels: torch.Tensor, optional
+            A torch tensor of shape [batch, (sequence_ctx + sequence_cont)]. Only passed
+            (and must be passed) if self.AUTO_MODEL_CLASS is transformers.AutoModelForSeq2SeqLM
+        :return
+            A torch tensor of shape [batch, sequence, vocab] with the
+        logits returned from the model's decoder
+        """
+
+        assert attn_mask is None
+        assert labels is None
+
+        # batch size must be 1
+        assert inputs.shape[0] == 1
+        input_ids = inputs[0].cpu().numpy().tolist()
+
+        return self.model(input_ids).logits
