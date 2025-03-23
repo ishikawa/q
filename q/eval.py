@@ -1,12 +1,12 @@
 import logging
-from typing import Any, Iterator, List, Optional, Tuple
+from typing import Any, Iterator, List, Literal, Optional, Tuple, Union
 
 import mlx.core as mx
 import torch
 import torch.nn.functional as F
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import TemplateLM
-from lm_eval.models.utils import Collator, pad_and_concat
+from lm_eval.models.utils import Collator
 from tqdm import tqdm
 
 from .common import ModelSize
@@ -31,11 +31,14 @@ class QLM(TemplateLM):
 
     max_length: int
 
+    batch_size: Optional[Union[int, str]]
+
     def __init__(
         self,
         model_size: ModelSize = "124M",
         models_dir: str = "models",
         max_length: int = 1024,
+        batch_size: Optional[Union[int, str]] = 1,
     ) -> None:
         super().__init__()
 
@@ -49,6 +52,7 @@ class QLM(TemplateLM):
         self.model = GPT2Model(params, hparams)
         self.generator = TokenGenerator(self.model)
         self.max_length = max_length
+        self.batch_size = batch_size
 
     @property
     def eot_token_id(self):
@@ -71,8 +75,7 @@ class QLM(TemplateLM):
         override_bs: Optional[int] = None,
         **kwargs,
     ) -> List[Tuple[float, bool]]:
-        # TODO: implement some kind of efficient-request-middleware that lumps
-        # together requests with the same context
+        # TODO: implement some kind of efficient-request-middleware that lumps together requests with the same context
         res = []
 
         def _collate(req: Tuple[Tuple[str, str], List[int], List[int]]):
@@ -98,31 +101,43 @@ class QLM(TemplateLM):
         re_ord = Collator(
             requests,
             sort_fn=_collate,
-            group_by="contexts",
+            group_by=(
+                "contexts" if self.backend == "causal" and self.logits_cache else None
+            ),
             group_fn=_lookup_one_token_cont,
         )
 
         # automatic (variable) batch size detection for vectorization
         # pull longest context sample from request
-        chunks: Iterator[Iterator[tuple[Any, list[int], list[int]]]] = (
-            re_ord.get_batched(n=1)
+        n_reordered_requests = len(re_ord)
+        batch_size = (
+            self.batch_size
+            if self.batch_size != "auto"
+            else override_bs if override_bs is not None else 0
+        )
+        batch_fn = (
+            self._batch_scheduler
+            if self.batch_size == "auto"
+            and n_reordered_requests > 0
+            and not override_bs
+            else None
         )
 
+        chunks = re_ord.get_batched(n=batch_size, batch_fn=batch_fn)
         pbar = tqdm(
             total=len(requests),
             disable=(disable_tqdm or (self.rank != 0)),
             desc="Running loglikelihood requests",
         )
-
         for chunk in chunks:
-            inps: list[list[int]] = []
-            cont_toks_list: list[list[int]] = []
-            inplens: list[int] = []
+            inps = []
+            cont_toks_list = []
+            inplens = []
 
             conts = []
             encoder_attns = []
 
-            padding_len_inp = 0
+            padding_len_inp = None
             padding_len_cont = None
             # because vectorizing is annoying, we first convert each (context, continuation) pair to padded
             # tensors, then we pack them together into a batch, call the model, and then pick it all apart
@@ -142,19 +157,47 @@ class QLM(TemplateLM):
                 # cont_toks      4 5 6 7 8 9      [:, -len(continuation_enc):, :self.vocab_size] slice
 
                 # when too long to fit in context, truncate from the left
-                total_length = len(context_enc) + len(continuation_enc)
-                if total_length > self.max_length + 1:
-                    eval_logger.warning(
-                        f"Combined length of context ({len(context_enc)}) and continuation ({len(continuation_enc)}) "
-                        f"exceeds model's maximum length ({self.max_length}). "
-                        f"Truncating {total_length - self.max_length + 1} tokens from the left."
+                if self.backend == "causal":
+                    total_length = len(context_enc) + len(continuation_enc)
+                    if total_length > self.max_length + 1:
+                        eval_logger.warn(
+                            f"Combined length of context ({len(context_enc)}) and continuation ({len(continuation_enc)}) "
+                            f"exceeds model's maximum length ({self.max_length}). "
+                            f"Truncating {total_length - self.max_length + 1} tokens from the left."
+                        )
+                    inp = torch.tensor(
+                        (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1],
+                        dtype=torch.long,
+                        device=self.device,
                     )
+                    (inplen,) = inp.shape
+                elif self.backend == "seq2seq":
+                    inp = torch.tensor(
+                        (context_enc)[-self.max_length :],
+                        dtype=torch.long,
+                        device=self.device,
+                    )
+                    (inplen,) = inp.shape
 
-                # context_enc と continuation_enc を結合したリストの末尾から
-                # (self.max_length + 1) 個の要素を取得し、その中からさらに末尾の
-                # 1要素を除いた部分を抽出します。​
-                inp = (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1]
-                inplen = len(inp)
+                    # build encoder attn masks
+                    encoder_attns.append(torch.ones_like(inp))
+
+                    cont = torch.tensor(
+                        (continuation_enc)[-self.max_length :],
+                        # TODO: left-shift these?
+                        # TODO: our code assumes we never end up truncating conts for either model type
+                        dtype=torch.long,
+                        device=self.device,
+                    )
+                    (contlen,) = cont.shape
+
+                    conts.append(cont)
+
+                    padding_len_cont = (
+                        max(padding_len_cont, contlen)
+                        if padding_len_cont is not None
+                        else contlen
+                    )
 
                 padding_len_inp = (
                     max(padding_len_inp, inplen)
@@ -168,9 +211,25 @@ class QLM(TemplateLM):
 
             # create encoder attn mask and batched conts, if seq2seq
             call_kwargs = {}
-            batched_inps = pad_and_concat(
-                padding_len_inp, inps, padding_side="right"
-            )  # [batch, padding_len_inp]
+            if self.backend == "causal":
+                batched_inps = pad_and_concat(
+                    padding_len_inp, inps, padding_side="right"
+                )  # [batch, padding_len_inp]
+            elif self.backend == "seq2seq":
+                # TODO: left-pad encoder inps and mask?
+                batched_inps = pad_and_concat(
+                    padding_len_inp, inps
+                )  # [batch, padding_len_inp]
+                batched_conts = pad_and_concat(
+                    padding_len_cont, conts
+                )  # [batch, padding_len_cont]
+                batched_encoder_mask = pad_and_concat(
+                    padding_len_inp, encoder_attns
+                )  # [batch, padding_len_inp]
+                call_kwargs = {
+                    "attn_mask": batched_encoder_mask,
+                    "labels": batched_conts,
+                }
 
             multi_logits = F.log_softmax(
                 self._model_call(batched_inps, **call_kwargs), dim=-1
@@ -185,7 +244,11 @@ class QLM(TemplateLM):
                 # (discard context toks if decoder-only ; discard right-padding)
                 # also discards + checks for "virtual tokens" in the causal LM's input window
                 # from prompt/prefix tuning tokens, if applicable
-                ctx_len = inplen + (logits.shape[0] - padding_len_inp)
+                ctx_len = (
+                    inplen + (logits.shape[0] - padding_len_inp)
+                    if self.backend == "causal"
+                    else None
+                )
                 logits = self._select_cont_toks(logits, contlen=contlen, inplen=ctx_len)
                 logits = logits.unsqueeze(0)  # [1, seq, vocab]
 
@@ -263,3 +326,64 @@ class QLM(TemplateLM):
         assert attn_mask is None
         assert labels is None
         return self.model(inputs).logits
+
+    def _select_cont_toks(
+        self, logits: torch.Tensor, contlen: int = None, inplen: int = None
+    ) -> torch.Tensor:
+        if self.backend == "causal":
+            assert (
+                contlen and inplen
+            ), "Must pass input len and cont. len to select scored logits for causal LM"
+            # discard right-padding.
+            # also discard the input/context tokens. we'll only score continuations.
+            logits = logits[inplen - contlen : inplen]
+        elif self.backend == "seq2seq":
+            assert (
+                contlen and not inplen
+            ), "Selecting scored logits for Seq2SeqLM requires only cont. len"
+            # only discard right-padding.
+            # the logits input to this fn only contain decoder-side tokens.
+            logits = logits[:contlen]
+
+        return logits
+
+
+# ----------------
+# Utilities
+# ----------------
+def pad_and_concat(
+    max_length: int,
+    arrays: List[mx.array],
+    padding_side: Literal["right", "left"] = "right",
+):
+    """
+    Method for padding a list of MLX arrays given the maximum array
+    length in the batch. Used for batching inputs.
+    """
+    assert (
+        padding_side == "left" or padding_side == "right"
+    ), f"Unrecognized padding type: '{padding_side}' not 'left' or 'right'"
+
+    for i, array in enumerate(arrays):
+        if len(array.shape) == 2:
+            # Squeeze, in case passed [1, seq] size
+            array = array[0]
+        tensor_len = array.shape[0]
+
+        if tensor_len < max_length:
+            if padding_side == "right":
+                # right-pad
+                padding = mx.zeros((max_length - tensor_len,), dtype=mx.int32)
+                arrays[i] = mx.expand_dims(
+                    mx.concatenate([array, padding], axis=0), axis=0
+                )
+            else:
+                # left-pad
+                padding = mx.zeros((max_length - tensor_len,), dtype=mx.int32)
+                arrays[i] = mx.expand_dims(
+                    mx.concatenate([padding, array], axis=0), axis=0
+                )
+        else:
+            arrays[i] = mx.expand_dims(array, axis=0)
+
+    return mx.concatenate(arrays, axis=0)
