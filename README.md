@@ -55,6 +55,14 @@ The computer is a machine that can perform complex calculations, and it can perf
 Generated 37.19 tokens/sec
 ```
 
+## Evaluation
+
+You can run [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
+
+```
+poetry run eval --model q --model_args model_size=355M --tasks hellaswag
+```
+
 ## References
 
 - [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
