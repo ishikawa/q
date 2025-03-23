@@ -5,19 +5,17 @@ from q.gpt2 import GPT2Model
 
 def test_logits_shape(model: GPT2Model):
     hparams = model.hparams
-    inputs = [1, 2, 3]
+    inputs = mx.array([[1, 2, 3]])
 
     # Get logits
     logits = model(inputs).logits
 
     # Assert the shape of logits
-    assert logits.shape == (1, len(inputs), hparams["n_vocab"])
-
-    print("Logits shape test passed!")
+    assert logits.shape == (1, 3, hparams["n_vocab"])
 
 
 def test_compute_loss(model: GPT2Model):
-    inputs = [15496, 2159]
+    inputs = mx.array([[15496, 2159]])
 
     # Case 1: Test without compute_loss (default behavior)
     output_without_loss = model(inputs)
