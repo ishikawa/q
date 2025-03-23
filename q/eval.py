@@ -48,7 +48,9 @@ class QLM(TemplateLM):
     ) -> None:
         super().__init__()
 
-        # print(f"Loading model {model_size} from {models_dir}")
+        # print(
+        #     f"Loading model {model_size}, batch_size={batch_size}, max_length={max_length}"
+        # )
 
         # load encoder, hparams, and params from the released open-ai gpt-2 files
         self.encoder = load_encoder(model_size, models_dir)
