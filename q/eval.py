@@ -74,6 +74,9 @@ class QLM(TemplateLM):
         """
         return self.encoder.encode(string)
 
+    def tok_decode(self, tokens, skip_special_tokens=True):
+        return self.encoder.decode(tokens)
+
     def _loglikelihood_tokens(
         self,
         requests: List[Tuple[Tuple[str, str], List[int], List[int]]],
@@ -325,6 +328,11 @@ class QLM(TemplateLM):
         assert attn_mask is None
         assert labels is None
         return self.model(inputs).logits
+
+    def _model_generate(
+        self, context: list[int], max_length: int, stop, **generation_kwargs
+    ):
+        return list(self.generator(context, max_length=max_length, **generation_kwargs))
 
     def _select_cont_tokens(
         self,
