@@ -402,4 +402,8 @@ def pad_and_concat(
 
 
 def main():
+    mlx_random_seed = 1234
+    mx.random.seed(mlx_random_seed)
+    print(f"Setting mlx seed to {mlx_random_seed}")
+
     cli_evaluate()
