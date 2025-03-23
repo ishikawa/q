@@ -30,3 +30,13 @@ def test_compute_loss(model: GPT2Model):
 
     # Check that our computed loss matches the expected loss
     assert mx.allclose(output_with_loss.loss, expected_loss)
+
+
+def test_batch_inputs(model: GPT2Model):
+    inputs = mx.array([[15496, 2159], [15496, 2159]])
+
+    # Get logits
+    logits = model(inputs).logits
+
+    # Assert the shape of logits
+    assert logits.shape == (2, 2, model.hparams["n_vocab"])
