@@ -1,10 +1,13 @@
 import logging
+import os
 from typing import Any, Iterator, List, Literal, Optional, Tuple
 
 import mlx.core as mx
 from lm_eval import utils
+from lm_eval.__main__ import cli_evaluate
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import TemplateLM
+from lm_eval.api.registry import register_model
 from lm_eval.models.utils import Collator
 from mlx.nn import log_softmax
 from tqdm import tqdm
@@ -17,7 +20,10 @@ from .params import load_hparams_and_params
 
 eval_logger = logging.getLogger(__name__)
 
+DEFAULT_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 
+
+@register_model("q")
 class QLM(TemplateLM):
     """
     A custom language model class for lm-evaluation-harness.
@@ -36,11 +42,13 @@ class QLM(TemplateLM):
     def __init__(
         self,
         model_size: ModelSize = "124M",
-        models_dir: str = "models",
+        models_dir: str = DEFAULT_MODELS_DIR,
         max_length: int = 1024,
         batch_size=1,
     ) -> None:
         super().__init__()
+
+        # print(f"Loading model {model_size} from {models_dir}")
 
         # load encoder, hparams, and params from the released open-ai gpt-2 files
         self.encoder = load_encoder(model_size, models_dir)
@@ -389,3 +397,7 @@ def pad_and_concat(
             arrays[i] = mx.expand_dims(array, axis=0)
 
     return mx.concatenate(arrays, axis=0)
+
+
+def main():
+    cli_evaluate()

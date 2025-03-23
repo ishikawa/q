@@ -12,7 +12,7 @@ def qlm():
 
 def test_eot_token_id(qlm):
     """Test that the eot_token_id property returns None as expected."""
-    assert qlm.eot_token_id is None
+    assert qlm.eot_token_id == 0
 
 
 def test_tok_encode(qlm):

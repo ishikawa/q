@@ -37,6 +37,7 @@ download = ["tensorflow", "requests", "numpy"]
 [tool.poetry.scripts]
 q = "q.cli:main"
 download = "q.download:main"
+eval = "q.eval:main"
 
 [build-system]
 requires = ["poetry-core"]
