@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Iterator, List, Optional, Tuple
 
+import mlx.core as mx
 import torch
 import torch.nn.functional as F
 from lm_eval.api.instance import Instance
@@ -243,7 +244,7 @@ class QLM(TemplateLM):
     ) -> List[float]:
         raise NotImplementedError()
 
-    def _model_call(self, inputs: torch.Tensor, attn_mask=None, labels=None):
+    def _model_call(self, inputs: mx.array, attn_mask=None, labels=None) -> mx.array:
         """
         :param inputs: torch.Tensor
             A torch tensor of shape [batch, (sequence_ctx + sequence_cont)] or of shape
@@ -261,9 +262,4 @@ class QLM(TemplateLM):
 
         assert attn_mask is None
         assert labels is None
-
-        # batch size must be 1
-        assert inputs.shape[0] == 1
-        input_ids = inputs[0].cpu().numpy().tolist()
-
-        return self.model(input_ids).logits
+        return self.model(inputs).logits
