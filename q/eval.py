@@ -256,28 +256,10 @@ class QLM(TemplateLM):
             toks = self.tok_encode(req[0])
             return -len(toks), req[0]
 
-        pbar = tqdm(
+        tqdm_bar = tqdm(
             total=len(requests),
             disable=(disable_tqdm or (self.rank != 0)),
             desc="Running generate_until requests",
-        )
-        adaptive_batch_size = None
-        if self.batch_size == "auto":
-            # using rolling window with maximum context
-            print("Passed argument batch_size = auto. Detecting largest batch size")
-            batch_size = self._detect_batch_size()
-            print(f"Determined Largest batch size: {batch_size}")
-            adaptive_batch_size = batch_size
-        # for each different set of kwargs, we execute all requests, by batch.
-        batch_size = (
-            self.batch_size
-            if self.batch_size != "auto"
-            else adaptive_batch_size if adaptive_batch_size is not None else 0
-        )
-        batch_fn = (
-            self._batch_scheduler
-            if self.batch_size == "auto" and not adaptive_batch_size
-            else None
         )
 
         # we group requests by their generation_kwargs,
@@ -290,7 +272,7 @@ class QLM(TemplateLM):
             group_by="gen_kwargs",
             group_fn=lambda x: x[1],
         )
-        chunks = re_ords.get_batched(n=batch_size, batch_fn=batch_fn)
+        chunks = re_ords.get_batched(n=self.batch_size)
         eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
         for chunk in chunks:
             contexts, all_gen_kwargs = zip(*chunk)
@@ -312,15 +294,11 @@ class QLM(TemplateLM):
                 max_gen_toks = self.max_gen_toks
 
             # set the max length in tokens of inputs ("context_enc")
-            if self.backend == "causal":
-                # max len for inputs = max length, minus room to generate the max new tokens
-                max_ctx_len = self.max_length - max_gen_toks
-                assert (
-                    max_ctx_len > 0
-                ), f"Invalid configuration: requested max tokens to generate ({max_gen_toks}) must be less than model's maximum sequence length ({self.max_length})."
-            elif self.backend == "seq2seq":
-                # max len for inputs = encoder's whole max_length
-                max_ctx_len = self.max_length
+            # max len for inputs = max length, minus room to generate the max new tokens
+            max_ctx_len = self.max_length - max_gen_toks
+            assert (
+                max_ctx_len > 0
+            ), f"Invalid configuration: requested max tokens to generate ({max_gen_toks}) must be less than model's maximum sequence length ({self.max_length})."
 
             # encode, pad, and truncate contexts for this batch
             context_enc, attn_masks = self.tok_batch_encode(
@@ -360,11 +338,11 @@ class QLM(TemplateLM):
                 res.append(s)
 
                 self.cache_hook.add_partial("generate_until", (context, gen_kwargs), s)
-                pbar.update(1)
+                tqdm_bar.update(1)
         # reorder this group of results back to original unsorted form
         res = re_ords.get_original(res)
 
-        pbar.close()
+        tqdm_bar.close()
 
         return res
 
