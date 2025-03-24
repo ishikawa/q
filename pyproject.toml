@@ -30,6 +30,8 @@ types-tensorflow = "^2.16.0.20240627"
 pytest = "^8.2.2"
 lm-eval = "0.4.8"
 pyright = "^1.1.397"
+langdetect = "^1.0.9"
+immutabledict = "^4.2.1"
 
 [tool.poetry.extras]
 download = ["tensorflow", "requests", "numpy"]
