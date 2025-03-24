@@ -28,7 +28,7 @@ types-regex = "^2024.5.15.20240519"
 types-requests = "^2.32.0.20240712"
 types-tensorflow = "^2.16.0.20240627"
 pytest = "^8.2.2"
-lm-eval = "0.4.8"
+lm-eval = {extras = ["math"], version = "^0.4.8"}
 pyright = "^1.1.397"
 langdetect = "^1.0.9"
 immutabledict = "^4.2.1"
