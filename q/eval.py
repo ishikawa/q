@@ -243,7 +243,108 @@ class QLM(TemplateLM):
     def generate_until(
         self, requests: List[Instance], disable_tqdm: bool = False
     ) -> List[str]:
-        raise NotImplementedError()
+        res = []
+
+        def _collate(req: Tuple[str, dict]):
+            """Defines the key for the sorted method"""
+            # the negative sign on len(toks) sorts descending - this has a few advantages:
+            # - time estimates will always be over not underestimates, which is more useful for planning
+            # - to know the size of a batch when going through the list, you know the first one is always the batch
+            #   padded context length. this is useful to simplify the batching logic and more importantly to make
+            #   automatic adaptive batches much much easier to implement
+            # - any OOMs will happen right away rather than near the end
+            toks = self.tok_encode(req[0])
+            return -len(toks), req[0]
+
+        tqdm_bar = tqdm(
+            total=len(requests),
+            disable=(disable_tqdm or (self.rank != 0)),
+            desc="Running generate_until requests",
+        )
+
+        # we group requests by their generation_kwargs,
+        # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
+        # in the same batch.
+        # group_fn=lambda x: x[1] -> x=(context, gen_kwargs)
+        re_ords = Collator(
+            [reg.args for reg in requests],
+            sort_fn=_collate,
+            group_by="gen_kwargs",
+            group_fn=lambda x: x[1],
+        )
+        chunks = re_ords.get_batched(n=self.batch_size)
+        eos = self.tok_decode(self.eot_token_id, skip_special_tokens=False)
+        for chunk in chunks:
+            contexts, all_gen_kwargs = zip(*chunk)
+            # we assume all gen kwargs in the batch are the same
+            # this is safe to assume because the `grouper` object ensures it.
+            gen_kwargs = all_gen_kwargs[0]
+            # unpack our keyword arguments.
+            if isinstance(gen_kwargs, dict):
+                kwargs = copy.deepcopy(gen_kwargs)  # edge case for repeats > 1
+                # add EOS token to stop sequences
+                until = handle_stop_sequences(kwargs.pop("until", None), eos=eos)
+            else:
+                raise ValueError(
+                    f"Expected `kwargs` to be of type `dict` but got {type(gen_kwargs)}"
+                )
+            if "max_gen_toks" in kwargs.keys():
+                max_gen_toks = kwargs.pop("max_gen_toks")
+            else:
+                max_gen_toks = self.max_gen_toks
+
+            # set the max length in tokens of inputs ("context_enc")
+            # max len for inputs = max length, minus room to generate the max new tokens
+            max_ctx_len = self.max_length - max_gen_toks
+            assert (
+                max_ctx_len > 0
+            ), f"Invalid configuration: requested max tokens to generate ({max_gen_toks}) must be less than model's maximum sequence length ({self.max_length})."
+
+            # encode, pad, and truncate contexts for this batch
+            context_enc, attn_masks = self.tok_batch_encode(
+                contexts,
+                left_truncate_len=max_ctx_len,
+                truncation=self.truncation,
+            )
+            context_enc = context_enc.to(self.device)
+            attn_masks = attn_masks.to(self.device)
+
+            if "max_length" not in kwargs:
+                kwargs["max_length"] = context_enc.shape[1] + max_gen_toks
+
+            # perform batched generation
+            cont = self._model_generate(
+                context=context_enc,
+                attention_mask=attn_masks,
+                stop=until,
+                **kwargs,
+            )
+
+            cont_toks_list = cont.tolist()
+            for cont_toks, context in zip(cont_toks_list, contexts):
+                # discard context + left-padding toks if using causal decoder-only LM
+                if self.backend == "causal":
+                    cont_toks = cont_toks[context_enc.shape[1] :]
+
+                s = self.tok_decode(cont_toks)
+
+                # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
+                for term in until:
+                    if len(term) > 0:
+                        # ignore '' separator,
+                        # for seq2seq case where self.tok_decode(self.eot_token_id) = ''
+                        s = s.split(term)[0]
+
+                res.append(s)
+
+                self.cache_hook.add_partial("generate_until", (context, gen_kwargs), s)
+                tqdm_bar.update(1)
+        # reorder this group of results back to original unsorted form
+        res = re_ords.get_original(res)
+
+        tqdm_bar.close()
+
+        return res
 
     def loglikelihood_rolling(
         self, requests: List[Instance], disable_tqdm: bool = False
