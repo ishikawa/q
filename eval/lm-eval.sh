@@ -1,8 +1,7 @@
 #!/bin/bash
 set -x
 
-OUTPUT_PATH="eval/outputs"
-
+OUTPUT_PATH="eval/outputs/$(date '+%Y%m%d_%H%M%S')"
 TASKS="hellaswag,mmlu"
 DEVICE="mps"
 BATCH_SIZE=2
