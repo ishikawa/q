@@ -118,12 +118,12 @@ def generate_with_metrics(
     temperature: float = 0.7,
     top_p: float = 0.9,
     device: str = "cuda",
-) -> Tuple[str, float, float, float, int, float]:
+) -> Tuple[str, float, float, float, float, int, float]:
     """
     Generate text from a prompt and measure performance metrics.
 
     Returns:
-        Tuple containing (generated_text, ttft, tps, memory_usage, token_count, total_time)
+        Tuple containing (generated_text, ttft, tps, memory_increase, peak_memory, token_count, total_time)
     """
     # Clear CUDA cache if device is CUDA
     if device == "cuda" and torch.cuda.is_available():
@@ -134,6 +134,7 @@ def generate_with_metrics(
 
     # Record initial memory
     initial_memory = get_memory_usage()
+    peak_memory = initial_memory
 
     # Tokenize the prompt
     input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
@@ -173,12 +174,20 @@ def generate_with_metrics(
         if first_token_time is None:
             first_token_time = time.time()
 
+        # Check current memory after each token for peak tracking
+        current_memory = get_memory_usage()
+        peak_memory = max(peak_memory, current_memory)
+
         generated_text += new_text
         token_count += 1
 
     # Wait for the thread to complete
     thread.join()
     end_time = time.time()
+
+    # One final memory check after thread completes
+    current_memory = get_memory_usage()
+    peak_memory = max(peak_memory, current_memory)
 
     # Calculate metrics
     ttft = first_token_time - start_time if first_token_time else 0
@@ -188,9 +197,19 @@ def generate_with_metrics(
         if token_count > 0 and (total_time - ttft) > 0
         else 0
     )
-    peak_memory = get_memory_usage() - initial_memory
 
-    return generated_text, ttft, tps, peak_memory, token_count, total_time
+    # Calculate memory increase from baseline to peak
+    memory_increase = peak_memory - initial_memory
+
+    return (
+        generated_text,
+        ttft,
+        tps,
+        memory_increase,
+        peak_memory,
+        token_count,
+        total_time,
+    )
 
 
 def run_benchmark(
@@ -238,6 +257,8 @@ def run_benchmark(
 
     # Setup metrics tracker
     metrics = PerformanceMetrics()
+    total_peak_memory = 0
+    max_peak_memory = 0
 
     # Storage for generated outputs
     generations = []
@@ -248,17 +269,27 @@ def run_benchmark(
 
         for run in tqdm(range(num_runs), desc=f"Prompt {prompt_idx+1}/{len(prompts)}"):
             try:
-                generated_text, ttft, tps, memory_usage, token_count, total_time = (
-                    generate_with_metrics(
-                        model=model,
-                        tokenizer=tokenizer,
-                        prompt=prompt,
-                        max_new_tokens=max_new_tokens,
-                        temperature=temperature,
-                        top_p=top_p,
-                        device=device,
-                    )
+                (
+                    generated_text,
+                    ttft,
+                    tps,
+                    memory_usage,
+                    peak_memory,
+                    token_count,
+                    total_time,
+                ) = generate_with_metrics(
+                    model=model,
+                    tokenizer=tokenizer,
+                    prompt=prompt,
+                    max_new_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    device=device,
                 )
+
+                # Track peak memory
+                total_peak_memory += peak_memory
+                max_peak_memory = max(max_peak_memory, peak_memory)
 
                 # Add to metrics
                 metrics.add_sample(ttft, tps, memory_usage, token_count, total_time)
@@ -277,6 +308,7 @@ def run_benchmark(
                                 "ttft": ttft,
                                 "tps": tps,
                                 "memory_usage_mb": memory_usage,
+                                "peak_memory_mb": peak_memory,
                                 "token_count": token_count,
                                 "total_time": total_time,
                             },
@@ -301,11 +333,16 @@ def run_benchmark(
             f"  TPS: {prompt_stats['tps']['mean']:.2f} tokens/sec (median: {prompt_stats['tps']['median']:.2f})"
         )
         print(
-            f"  Memory: {prompt_stats['memory_usage_mb']['mean']:.2f}MB (peak: {prompt_stats['memory_usage_mb']['max']:.2f}MB)"
+            f"  Memory Increase: {prompt_stats['memory_usage_mb']['mean']:.2f}MB (peak increase: {prompt_stats['memory_usage_mb']['max']:.2f}MB)"
         )
 
     # Calculate statistics
     final_stats = metrics.calculate_statistics()
+    avg_peak_memory = (
+        total_peak_memory / (len(prompts) * num_runs)
+        if len(prompts) * num_runs > 0
+        else 0
+    )
 
     # Create benchmark results
     results = {
@@ -319,6 +356,10 @@ def run_benchmark(
             "num_prompts": len(prompts),
         },
         "metrics": final_stats,
+        "peak_memory": {
+            "average_mb": avg_peak_memory,
+            "max_mb": max_peak_memory,
+        },
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -345,8 +386,10 @@ def run_benchmark(
     print("\nSummary:")
     print(f"  Average TTFT: {final_stats['ttft']['mean']:.4f}s")
     print(f"  Average TPS: {final_stats['tps']['mean']:.2f} tokens/sec")
-    print(f"  Average Memory Usage: {final_stats['memory_usage_mb']['mean']:.2f}MB")
-    print(f"  Peak Memory Usage: {final_stats['memory_usage_mb']['max']:.2f}MB")
+    print(f"  Average Memory Increase: {final_stats['memory_usage_mb']['mean']:.2f}MB")
+    print(f"  Peak Memory Increase: {final_stats['memory_usage_mb']['max']:.2f}MB")
+    print(f"  Average Total Memory: {avg_peak_memory:.2f}MB")
+    print(f"  Maximum Total Memory: {max_peak_memory:.2f}MB")
     print(f"  Total Tokens Generated: {final_stats['token_counts']['total']}")
     print(f"  Total Generation Time: {final_stats['generation_times']['total']:.2f}s")
 
