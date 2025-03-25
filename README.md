@@ -57,11 +57,30 @@ Generated 37.19 tokens/sec
 
 ## Evaluation
 
+| Model                                                        | Hellaswag | MMLU   |
+| ------------------------------------------------------------ | --------- | ------ |
+| Q (124M)                                                     | 28.92%    | 22.92% |
+| [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 28.92%    | 22.92% |
+
+[Hellaswag](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/tasks/hellaswag/README.md):
+
+- Measure: Accuracy
+- Shots: 0-shot
+
+[MMLU](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/tasks/mmlu/README.md)
+
+- Measure: Accuracy
+- Shots: 0-shot
+
+### How to evaluate
+
 You can run [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
 ```
 poetry run eval --model q --model_args model_size=355M --tasks hellaswag
 ```
+
+and we have [our evaluation script](eval/lm-eval.sh).
 
 ## References
 
