@@ -36,3 +36,12 @@ poetry run lm_eval --model hf \
 #     --tasks $TASKS \
 #     --device $DEVICE \
 #     --batch_size $BATCH_SIZE
+
+# Qwen/Qwen2.5-0.5B
+# https://huggingface.co/Qwen/Qwen2.5-0.5B
+poetry run lm_eval --model hf \
+    --model_args pretrained=Qwen/Qwen2.5-0.5B \
+    --output_path $OUTPUT_PATH \
+    --tasks $TASKS \
+    --device $DEVICE \
+    --batch_size $BATCH_SIZE
