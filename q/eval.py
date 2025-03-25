@@ -73,8 +73,6 @@ class QLM(TemplateLM):
         except ValueError:
             raise ValueError(f"batch_size must be an integer, got '{batch_size}'")
 
-        print("[QLM] Model loaded")
-
     @property
     def eot_token_id(self) -> int:  # type: ignore
         # In the original GPT-2 implementation, there is no explicit EOS (End of
