@@ -115,7 +115,6 @@ def generate_with_metrics(
     tokenizer,
     prompt: str,
     max_new_tokens: int = 100,
-    temperature: float = 0.7,
     top_p: float = 0.9,
     device: str = "cuda",
 ) -> Tuple[str, float, float, float, float, int, float]:
@@ -153,9 +152,9 @@ def generate_with_metrics(
     generation_kwargs = {
         "input_ids": input_ids,
         "max_new_tokens": max_new_tokens,
-        "temperature": temperature,
+        "temperature": 1.0,  # 固定値 1.0 を使用
         "top_p": top_p,
-        "do_sample": temperature > 0,
+        "do_sample": True,  # temperature は常に 1.0 なので True
         "streamer": streamer,
         "stopping_criteria": stopping_criteria,
     }
@@ -217,7 +216,6 @@ def run_benchmark(
     prompts: List[str] = None,
     output_dir: str = "eval/outputs",
     max_new_tokens: int = 100,
-    temperature: float = 0.7,
     top_p: float = 0.9,
     device: str = "cuda",
     num_runs: int = 1,
@@ -231,7 +229,6 @@ def run_benchmark(
         prompts: List of prompts to test (uses defaults if None)
         output_dir: Directory to save results
         max_new_tokens: Maximum number of tokens to generate
-        temperature: Sampling temperature
         top_p: Top-p sampling parameter
         device: Device to run on ('cuda', 'mps', 'cpu')
         num_runs: Number of times to run each prompt
@@ -282,7 +279,6 @@ def run_benchmark(
                     tokenizer=tokenizer,
                     prompt=prompt,
                     max_new_tokens=max_new_tokens,
-                    temperature=temperature,
                     top_p=top_p,
                     device=device,
                 )
@@ -350,7 +346,7 @@ def run_benchmark(
         "device": device,
         "parameters": {
             "max_new_tokens": max_new_tokens,
-            "temperature": temperature,
+            "temperature": 1.0,  # 常に 1.0 を使用
             "top_p": top_p,
             "num_runs": num_runs,
             "num_prompts": len(prompts),
@@ -402,7 +398,6 @@ def run_benchmark(
 @click.option(
     "--max-new-tokens", default=100, type=int, help="Maximum tokens to generate"
 )
-@click.option("--temperature", default=0.7, type=float, help="Sampling temperature")
 @click.option("--top-p", default=0.9, type=float, help="Top-p sampling parameter")
 @click.option(
     "--device", default="mps", type=str, help="Device to run on (cuda, mps, cpu)"
@@ -414,7 +409,6 @@ def main(
     pretrained: str,
     output_path: str,
     max_new_tokens: int,
-    temperature: float,
     top_p: float,
     device: str,
     num_runs: int,
@@ -449,7 +443,6 @@ def main(
         prompts=custom_prompts,
         output_dir=output_path,
         max_new_tokens=max_new_tokens,
-        temperature=temperature,
         top_p=top_p,
         device=device,
         num_runs=num_runs,
