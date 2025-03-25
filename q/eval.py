@@ -43,8 +43,8 @@ class QLM(TemplateLM):
         self,
         model_size: ModelSize = "124M",
         models_dir: str = DEFAULT_MODELS_DIR,
-        max_length: int = 1024,
-        batch_size=1,
+        max_length: Optional[str | int] = 1024,
+        batch_size: Optional[str | int] = 1,
     ) -> None:
         super().__init__()
 
@@ -61,8 +61,17 @@ class QLM(TemplateLM):
 
         self.model = GPT2Model(params, hparams)
         self.generator = TokenGenerator(self.model)
-        self.max_length = max_length
-        self.batch_size = batch_size
+
+        # parse integer parameters
+        try:
+            self.max_length = int(max_length) if max_length is not None else 1024
+        except ValueError:
+            raise ValueError(f"max_length must be an integer, got '{max_length}'")
+
+        try:
+            self.batch_size = int(batch_size) if batch_size is not None else 1
+        except ValueError:
+            raise ValueError(f"batch_size must be an integer, got '{batch_size}'")
 
     @property
     def eot_token_id(self) -> int:  # type: ignore
