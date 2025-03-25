@@ -11,7 +11,6 @@ BATCH_SIZE=2
 poetry run eval --model q \
     --model_args model_size=124M \
     --output_path $OUTPUT_PATH \
-    --log_samples \
     --tasks $TASKS \
     --batch_size $BATCH_SIZE
 
@@ -19,7 +18,6 @@ poetry run eval --model q \
 # poetry run eval --model q \
 #     --model_args model_size=355M \
 #     --output_path $OUTPUT_PATH \
-#     --log_samples \
 #     --tasks $TASKS \
 #     --batch_size $BATCH_SIZE
 
@@ -27,7 +25,6 @@ poetry run eval --model q \
 poetry run lm_eval --model hf \
     --model_args pretrained=gpt2 \
     --output_path $OUTPUT_PATH \
-    --log_samples \
     --tasks $TASKS \
     --device $DEVICE \
     --batch_size $BATCH_SIZE
@@ -36,7 +33,6 @@ poetry run lm_eval --model hf \
 # poetry run lm_eval --model hf \
 #     --model_args pretrained=gpt2-medium \
 #     --output_path $OUTPUT_PATH \
-#     --log_samples \
 #     --tasks $TASKS \
 #     --device $DEVICE \
 #     --batch_size $BATCH_SIZE
