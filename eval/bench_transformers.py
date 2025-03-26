@@ -19,13 +19,7 @@ import click
 import psutil
 import torch
 from tqdm import tqdm
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    MaxLengthCriteria,
-    StoppingCriteriaList,
-    TextIteratorStreamer,
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 # Sample prompts for evaluation
 SAMPLE_PROMPTS = [
@@ -114,7 +108,7 @@ def generate_with_metrics(
     model,
     tokenizer,
     prompt: str,
-    max_length: int = 1024,
+    max_length: int = 100,
     device: str = "mps",
 ) -> Tuple[str, float, float, float, float, int, float]:
     """
@@ -204,9 +198,9 @@ def generate_with_metrics(
 
 def run_benchmark(
     model_name: str,
-    prompts: List[str] = None,
+    prompts: Optional[list[str]] = None,
     output_dir: str = "eval/outputs",
-    max_length: int = 1024,
+    max_length: int = 100,
     device: str = "mps",
     num_runs: int = 1,
     save_generations: bool = True,
