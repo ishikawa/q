@@ -61,6 +61,7 @@ Generated 37.19 tokens/sec
 | ------------------------------------------------------------ | --------- | ------ |
 | Q (124M)                                                     | 28.92%    | 22.92% |
 | [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 28.92%    | 22.92% |
+| [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B)     | 40.59%    | 47.14% |
 
 [Hellaswag](https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/tasks/hellaswag/README.md):
 
