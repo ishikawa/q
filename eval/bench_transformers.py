@@ -11,9 +11,10 @@ import json
 import os
 import statistics
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from threading import Thread
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import click
 import psutil
@@ -34,6 +35,19 @@ SAMPLE_PROMPTS = [
     "Write a short story about a robot discovering emotions.",
     "How does quantum computing differ from classical computing?",
 ]
+
+
+@dataclass
+class GenerationMetrics:
+    """Class to hold metrics for a single text generation."""
+
+    generated_text: str
+    ttft: float  # Time to First Token in seconds
+    tps: float  # Tokens Per Second
+    memory_increase: float  # Memory increase in MB
+    peak_memory: float  # Peak memory usage in MB
+    token_count: int  # Number of tokens generated
+    total_time: float  # Total generation time in seconds
 
 
 class PerformanceMetrics:
@@ -110,12 +124,12 @@ def generate_with_metrics(
     prompt: str,
     max_length: int = 100,
     device: str = "mps",
-) -> Tuple[str, float, float, float, float, int, float]:
+) -> GenerationMetrics:
     """
     Generate text from a prompt and measure performance metrics.
 
     Returns:
-        Tuple containing (generated_text, ttft, tps, memory_increase, peak_memory, token_count, total_time)
+        GenerationMetrics containing metrics for the generation
     """
     # Clear CUDA cache if device is CUDA
     if device == "cuda" and torch.cuda.is_available():
@@ -185,20 +199,19 @@ def generate_with_metrics(
     # Calculate memory increase from baseline to peak
     memory_increase = peak_memory - initial_memory
 
-    return (
-        generated_text,
-        ttft,
-        tps,
-        memory_increase,
-        peak_memory,
-        token_count,
-        total_time,
+    return GenerationMetrics(
+        generated_text=generated_text,
+        ttft=ttft,
+        tps=tps,
+        memory_increase=memory_increase,
+        peak_memory=peak_memory,
+        token_count=token_count,
+        total_time=total_time,
     )
 
 
 def run_benchmark(
     model_name: str,
-    prompts: Optional[list[str]] = None,
     output_dir: str = "eval/outputs",
     max_length: int = 100,
     device: str = "mps",
@@ -220,8 +233,7 @@ def run_benchmark(
     Returns:
         Dictionary with benchmark results
     """
-    if prompts is None:
-        prompts = SAMPLE_PROMPTS
+    prompts = SAMPLE_PROMPTS
 
     # Load model and tokenizer
     print(f"Loading model: {model_name}")
@@ -249,15 +261,7 @@ def run_benchmark(
 
         for run in tqdm(range(num_runs), desc=f"Prompt {prompt_idx+1}/{len(prompts)}"):
             try:
-                (
-                    generated_text,
-                    ttft,
-                    tps,
-                    memory_usage,
-                    peak_memory,
-                    token_count,
-                    total_time,
-                ) = generate_with_metrics(
+                generation_metrics = generate_with_metrics(
                     model=model,
                     tokenizer=tokenizer,
                     prompt=prompt,
@@ -266,29 +270,39 @@ def run_benchmark(
                 )
 
                 # Track peak memory
-                total_peak_memory += peak_memory
-                max_peak_memory = max(max_peak_memory, peak_memory)
+                total_peak_memory += generation_metrics.peak_memory
+                max_peak_memory = max(max_peak_memory, generation_metrics.peak_memory)
 
                 # Add to metrics
-                metrics.add_sample(ttft, tps, memory_usage, token_count, total_time)
+                metrics.add_sample(
+                    generation_metrics.ttft,
+                    generation_metrics.tps,
+                    generation_metrics.memory_increase,
+                    generation_metrics.token_count,
+                    generation_metrics.total_time,
+                )
                 prompt_metrics.add_sample(
-                    ttft, tps, memory_usage, token_count, total_time
+                    generation_metrics.ttft,
+                    generation_metrics.tps,
+                    generation_metrics.memory_increase,
+                    generation_metrics.token_count,
+                    generation_metrics.total_time,
                 )
 
                 if save_generations:
                     generations.append(
                         {
                             "prompt": prompt,
-                            "generated_text": generated_text,
+                            "generated_text": generation_metrics.generated_text,
                             "prompt_idx": prompt_idx,
                             "run": run,
                             "metrics": {
-                                "ttft": ttft,
-                                "tps": tps,
-                                "memory_usage_mb": memory_usage,
-                                "peak_memory_mb": peak_memory,
-                                "token_count": token_count,
-                                "total_time": total_time,
+                                "ttft": generation_metrics.ttft,
+                                "tps": generation_metrics.tps,
+                                "memory_usage_mb": generation_metrics.memory_increase,
+                                "peak_memory_mb": generation_metrics.peak_memory,
+                                "token_count": generation_metrics.token_count,
+                                "total_time": generation_metrics.total_time,
                             },
                         }
                     )
@@ -378,7 +392,7 @@ def run_benchmark(
 @click.option("--output-path", default="eval/outputs", help="Directory to save results")
 @click.option(
     "--max-length",
-    default=1024,
+    default=100,
     type=int,
     help="Maximum sequence length for generation",
 )
@@ -386,7 +400,6 @@ def run_benchmark(
     "--device", default="mps", type=str, help="Device to run on (cuda, mps, cpu)"
 )
 @click.option("--num-runs", default=3, type=int, help="Number of runs per prompt")
-@click.option("--prompts-file", type=str, help="JSON file with custom prompts")
 @click.option("--no-save-generations", is_flag=True, help="Don't save generated text")
 def main(
     pretrained: str,
@@ -394,7 +407,6 @@ def main(
     max_length: int,
     device: str,
     num_runs: int,
-    prompts_file: Optional[str],
     no_save_generations: bool,
 ):
     """Benchmark a transformer model's performance metrics."""
@@ -408,21 +420,9 @@ def main(
 
     print(f"Running on device: {device}")
 
-    # Load custom prompts if provided
-    custom_prompts = None
-    if prompts_file:
-        try:
-            with open(prompts_file, "r") as f:
-                custom_prompts = json.load(f)
-            print(f"Loaded {len(custom_prompts)} custom prompts from {prompts_file}")
-        except Exception as e:
-            print(f"Error loading prompts file: {e}")
-            return
-
     # Run benchmark
     run_benchmark(
         model_name=pretrained,
-        prompts=custom_prompts,
         output_dir=output_path,
         max_length=max_length,
         device=device,
