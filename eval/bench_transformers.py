@@ -114,9 +114,8 @@ def generate_with_metrics(
     model,
     tokenizer,
     prompt: str,
-    max_new_tokens: int = 100,
-    top_p: float = 0.9,
-    device: str = "cuda",
+    max_length: int = 1024,
+    device: str = "mps",
 ) -> Tuple[str, float, float, float, float, int, float]:
     """
     Generate text from a prompt and measure performance metrics.
@@ -143,20 +142,12 @@ def generate_with_metrics(
         tokenizer, skip_prompt=True, skip_special_tokens=True
     )
 
-    # Set up stopping criteria
-    stopping_criteria = StoppingCriteriaList(
-        [MaxLengthCriteria(max_length=input_ids.shape[1] + max_new_tokens)]
-    )
-
     # Prepare generation parameters
     generation_kwargs = {
         "input_ids": input_ids,
-        "max_new_tokens": max_new_tokens,
-        "temperature": 1.0,  # 固定値 1.0 を使用
-        "top_p": top_p,
-        "do_sample": True,  # temperature は常に 1.0 なので True
+        "max_length": max_length,
+        "temperature": 1.0,
         "streamer": streamer,
-        "stopping_criteria": stopping_criteria,
     }
 
     # Start generation in a separate thread
@@ -215,9 +206,8 @@ def run_benchmark(
     model_name: str,
     prompts: List[str] = None,
     output_dir: str = "eval/outputs",
-    max_new_tokens: int = 100,
-    top_p: float = 0.9,
-    device: str = "cuda",
+    max_length: int = 1024,
+    device: str = "mps",
     num_runs: int = 1,
     save_generations: bool = True,
 ) -> Dict[str, Any]:
@@ -228,8 +218,7 @@ def run_benchmark(
         model_name: HuggingFace model identifier
         prompts: List of prompts to test (uses defaults if None)
         output_dir: Directory to save results
-        max_new_tokens: Maximum number of tokens to generate
-        top_p: Top-p sampling parameter
+        max_length: Maximum sequence length for generation
         device: Device to run on ('cuda', 'mps', 'cpu')
         num_runs: Number of times to run each prompt
         save_generations: Whether to save generated text
@@ -278,8 +267,7 @@ def run_benchmark(
                     model=model,
                     tokenizer=tokenizer,
                     prompt=prompt,
-                    max_new_tokens=max_new_tokens,
-                    top_p=top_p,
+                    max_length=max_length,
                     device=device,
                 )
 
@@ -345,9 +333,8 @@ def run_benchmark(
         "model": model_name,
         "device": device,
         "parameters": {
-            "max_new_tokens": max_new_tokens,
-            "temperature": 1.0,  # 常に 1.0 を使用
-            "top_p": top_p,
+            "max_length": max_length,
+            "temperature": 1.0,
             "num_runs": num_runs,
             "num_prompts": len(prompts),
         },
@@ -396,9 +383,11 @@ def run_benchmark(
 @click.option("--pretrained", required=True, help="HuggingFace model name or path")
 @click.option("--output-path", default="eval/outputs", help="Directory to save results")
 @click.option(
-    "--max-new-tokens", default=100, type=int, help="Maximum tokens to generate"
+    "--max-length",
+    default=1024,
+    type=int,
+    help="Maximum sequence length for generation",
 )
-@click.option("--top-p", default=0.9, type=float, help="Top-p sampling parameter")
 @click.option(
     "--device", default="mps", type=str, help="Device to run on (cuda, mps, cpu)"
 )
@@ -408,8 +397,7 @@ def run_benchmark(
 def main(
     pretrained: str,
     output_path: str,
-    max_new_tokens: int,
-    top_p: float,
+    max_length: int,
     device: str,
     num_runs: int,
     prompts_file: Optional[str],
@@ -442,8 +430,7 @@ def main(
         model_name=pretrained,
         prompts=custom_prompts,
         output_dir=output_path,
-        max_new_tokens=max_new_tokens,
-        top_p=top_p,
+        max_length=max_length,
         device=device,
         num_runs=num_runs,
         save_generations=not no_save_generations,
