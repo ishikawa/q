@@ -115,6 +115,9 @@ class PerformanceMetrics:
 def get_memory_usage() -> float:
     """Get current memory usage in MB."""
     process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+
+    print(f"memory_info: {memory_info}")
     return process.memory_info().rss / (1024 * 1024)
 
 
@@ -268,6 +271,7 @@ def run_benchmark(
                     max_length=max_length,
                     device=device,
                 )
+                print("Peak memory usage:", generation_metrics.peak_memory)
 
                 # Track peak memory
                 total_peak_memory += generation_metrics.peak_memory
