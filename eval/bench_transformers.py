@@ -116,8 +116,10 @@ def get_memory_usage() -> float:
     """Get current memory usage in MB."""
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
+    memory_full_info = process.memory_full_info()
 
     print(f"memory_info: {memory_info}")
+    print(f"memory_full_info: {memory_full_info}")
     return process.memory_info().rss / (1024 * 1024)
 
 
