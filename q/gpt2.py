@@ -128,12 +128,8 @@ def attention(q, k, v, mask):
 
 
 def mha(
-    x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int, past_k=None, past_v=None
-) -> tuple[
-    mx.array,  # output: (batch, seq_len, emb)
-    mx.array,  # k: (batch, total_seq_len, n_head, head_dim)
-    mx.array,  # v: (batch, total_seq_len, n_head, head_dim)
-]:
+    x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int
+) -> mx.array:  # output: (batch, seq_len, emb)
     # qkv projection: (batch, seq_len, 3*emb)
     qkv = linear(x, **c_attn)
     q, k, v = mx.split(qkv, 3, axis=-1)
@@ -145,12 +141,6 @@ def mha(
     q = mx.reshape(q, (batch, seq_len, n_head, head_dim))
     k = mx.reshape(k, (batch, seq_len, n_head, head_dim))
     v = mx.reshape(v, (batch, seq_len, n_head, head_dim))
-
-    # If past keys/values exist, concatenate them along the sequence dimension (axis=1)
-    if past_k is not None and past_v is not None:
-        # Expecting past_k, past_v to have shape (batch, past_seq_len, n_head, head_dim)
-        k = mx.concatenate([past_k, k], axis=1)
-        v = mx.concatenate([past_v, v], axis=1)
 
     total_seq_len = k.shape[1]  # total sequence length including past
 
@@ -178,14 +168,14 @@ def mha(
     context = mx.reshape(context, (batch, seq_len, embed_dim))
     output = linear(context, **c_proj)
 
-    return output, k, v
+    return output
 
 
 def transformer_block(
     x, mlp, attn, ln_1, ln_2, n_head
 ):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # multi-head causal self attention
-    m, _k, _v = mha(layer_norm(x, **ln_1), **attn, n_head=n_head)
+    m = mha(layer_norm(x, **ln_1), **attn, n_head=n_head)
     x = x + m
 
     # position-wise feed forward network
