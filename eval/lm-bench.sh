@@ -8,4 +8,5 @@ do
     echo "Running with max length $max_length"
     poetry run python -m q.bench.cli --output-path="$OUTPUT_PATH" --max-length="$max_length"
     poetry run python -m q.bench.cli --output-path="$OUTPUT_PATH" --model gpt2 --max-length="$max_length"
+    poetry run python -m q.bench.cli --output-path="$OUTPUT_PATH" --model Qwen/Qwen2.5-0.5B --max-length="$max_length"
 done

@@ -83,6 +83,22 @@ poetry run python -m q.eval --model q --model_args model_size=355M --tasks hella
 
 and we have [our evaluation script](eval/lm-eval.sh).
 
+## Benchmark
+
+### TPS (Average)
+
+| `max_length`                                                 | 64    | 128   | 256   |
+| ------------------------------------------------------------ | ----- | ----- | ----- |
+| Q (124M)                                                     | 47.33 | 33.6  | 19.6  |
+| [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 53.96 | 51.56 | 54.76 |
+
+### Peak Memory (Average, MB)
+
+| `max_length`                                                 | 64     | 128    | 256     |
+| ------------------------------------------------------------ | ------ | ------ | ------- |
+| Q (124M)                                                     | 780.37 | 581.89 | 537.33  |
+| [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 781.96 | 974.82 | 1358.00 |
+
 ## References
 
 - [Language Models are Unsupervised Multitask Learners](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)
