@@ -182,16 +182,22 @@ def mha(
 
 
 def transformer_block(
-    x, mlp, attn, ln_1, ln_2, n_head
-):  # (n_seq, n_embd) -> (n_seq, n_embd)
+    x, mlp, attn, ln_1, ln_2, *, n_head: int, past_k=None, past_v=None
+) -> tuple[
+    mx.array,  # output: (batch, seq_len, emb)
+    mx.array,  # k: (batch, total_seq_len, n_head, head_dim)
+    mx.array,  # v: (batch, total_seq_len, n_head, head_dim)
+]:
     # multi-head causal self attention
-    m, _k, _v = mha(layer_norm(x, **ln_1), **attn, n_head=n_head)
-    x = x + m
+    attn_output, k, v = mha(
+        layer_norm(x, **ln_1), **attn, n_head=n_head, past_k=past_k, past_v=past_v
+    )
+    x = x + attn_output
 
     # position-wise feed forward network
     x = x + ffn(layer_norm(x, **ln_2), **mlp)  # (n_seq, n_embd) -> (n_seq, n_embd)
 
-    return x
+    return x, k, v
 
 
 def gpt2(
@@ -215,7 +221,7 @@ def gpt2(
     # forward pass through n_layer transformer blocks
     for block in blocks:
         # (n_seq, n_embd) -> (n_seq, n_embd)
-        x = transformer_block(x, **block, n_head=n_head)
+        x, k, v = transformer_block(x, **block, n_head=n_head)
 
     # projection to vocab
     x = layer_norm(x, **ln_f)  # (n_seq, n_embd) -> (n_seq, n_embd)
