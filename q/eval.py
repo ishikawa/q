@@ -299,7 +299,7 @@ class QLM(TemplateLM):
             batch_indices, batch_windows = zip(*batch)
 
             batch_nlls = self._loglikelihood_tokens(
-                requests=batch_windows,
+                requests=batch_windows,  # type: ignore
                 disable_tqdm=False,
                 override_bs=len(batch_windows),
             )
@@ -416,3 +416,7 @@ def main():
     print(f"Setting mlx seed to {mlx_random_seed}")
 
     cli_evaluate()
+
+
+if __name__ == "__main__":
+    main()

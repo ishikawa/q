@@ -7,14 +7,14 @@ DEVICE="mps"
 BATCH_SIZE=2
 
 # q (124M)
-poetry run eval --model q \
+poetry run python -m q.eval --model q \
     --model_args model_size=124M \
     --output_path $OUTPUT_PATH \
     --tasks $TASKS \
     --batch_size $BATCH_SIZE
 
 # q (355M)
-# poetry run eval --model q \
+# poetry run python -m q.eval --model q \
 #     --model_args model_size=355M \
 #     --output_path $OUTPUT_PATH \
 #     --tasks $TASKS \
