@@ -89,7 +89,7 @@ and we have [our evaluation script](eval/lm-eval.sh).
 
 | `max_length`                                                 | 64    | 128   | 256   |
 | ------------------------------------------------------------ | ----- | ----- | ----- |
-| Q (124M)                                                     | 77.17 | 79.26 | 77.83 |
+| Q (124M)                                                     | 80.90 | 80.79 | 79.05 |
 | [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 53.96 | 51.56 | 54.76 |
 | [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B)     | 21.80 | 22.33 | 22.24 |
 
@@ -97,7 +97,7 @@ and we have [our evaluation script](eval/lm-eval.sh).
 
 | `max_length`                                                 | 64      | 128     | 256     |
 | ------------------------------------------------------------ | ------- | ------- | ------- |
-| Q (124M)                                                     | 533.79  | 778.75  | 779.26  |
+| Q (124M)                                                     | 777.11  | 779.03  | 779.89  |
 | [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 781.96  | 974.82  | 1358.00 |
 | [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B)     | 1257.32 | 1292.65 | 1284.94 |
 
