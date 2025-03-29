@@ -102,7 +102,9 @@ def layer_norm(x, g, b, eps: float = 1e-5):
     return g * x + b  # scale and offset with gamma/beta params
 
 
-def linear(x, w, b):  # (m, in), (in, out), (out) -> (m, out)
+def linear(
+    x: mx.array, w: mx.array, b: mx.array
+) -> mx.array:  # (m, in), (in, out), (out) -> (m, out)
     return x @ w + b
 
 
@@ -125,8 +127,14 @@ def attention(q, k, v, mask):
     return mx.matmul(weights, v)  # (batch, seq_len, head_dim)
 
 
-def mha(x, c_attn, c_proj, n_head):
-    batch, seq_len, emb = x.shape
+# multi-head attention
+def mha(
+    x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int, past_k=None, past_v=None
+) -> tuple[
+    mx.array,  # (batch, seq_len, emb)
+    mx.array,  # k
+    mx.array,  # v
+]:
     # qkv projection
     qkv = linear(x, **c_attn)  # (batch, seq_len, 3*emb)
     q, k, v = mx.split(qkv, 3, axis=-1)
@@ -136,28 +144,49 @@ def mha(x, c_attn, c_proj, n_head):
     k_heads = mx.split(k, n_head, axis=-1)
     v_heads = mx.split(v, n_head, axis=-1)
 
+    # If `past_k` and `past_v` are provided, concatenate them with the new keys and values
+    new_k_heads: mx.array = k_heads
+    new_v_heads: mx.array = v_heads
+
+    if past_k is not None and past_v is not None:
+        # Concatenate past keys and values with the new keys and values
+        ks: list[mx.array] = []
+        vs: list[mx.array] = []
+
+        for i in range(n_head):
+            new_k = mx.concatenate([past_k[i], k_heads[i]], axis=1)
+            new_v = mx.concatenate([past_v[i], v_heads[i]], axis=1)
+            ks.append(new_k)
+            vs.append(new_v)
+
+        new_k_heads = mx.concatenate(ks)
+        new_v_heads = mx.concatenate(vs)
+
+    total_seq_len = new_k_heads[0].shape[1]
+
     # causal mask: (seq_len, seq_len) → (1, seq_len, seq_len)
-    causal_mask = (1 - mx.tri(seq_len, seq_len, k=0, dtype=x.dtype)) * -1e10
+    causal_mask = (1 - mx.tri(total_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
     causal_mask = mx.expand_dims(causal_mask, axis=0)
 
     # per‑head attention
     out_heads = [
         attention(qh, kh, vh, causal_mask)
-        for qh, kh, vh in zip(q_heads, k_heads, v_heads)
+        for qh, kh, vh in zip(q_heads, new_k_heads, new_v_heads)
     ]  # list of (batch, seq_len, head_dim)
 
     # concat heads → (batch, seq_len, emb)
     concat = mx.concatenate(out_heads, axis=-1)
-    return linear(concat, **c_proj)
+    output = linear(concat, **c_proj)
+
+    return output, new_k_heads, new_v_heads
 
 
 def transformer_block(
     x, mlp, attn, ln_1, ln_2, n_head
 ):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # multi-head causal self attention
-    x = x + mha(
-        layer_norm(x, **ln_1), **attn, n_head=n_head
-    )  # (n_seq, n_embd) -> (n_seq, n_embd)
+    m, _k, _v = mha(layer_norm(x, **ln_1), **attn, n_head=n_head)
+    x = x + m
 
     # position-wise feed forward network
     x = x + ffn(layer_norm(x, **ln_2), **mlp)  # (n_seq, n_embd) -> (n_seq, n_embd)
