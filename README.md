@@ -78,7 +78,7 @@ Generated 37.19 tokens/sec
 You can run [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
 ```
-poetry run eval --model q --model_args model_size=355M --tasks hellaswag
+poetry run python -m q.eval --model q --model_args model_size=355M --tasks hellaswag
 ```
 
 and we have [our evaluation script](eval/lm-eval.sh).
