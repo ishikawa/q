@@ -12,7 +12,7 @@ import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import click
 import psutil
@@ -122,9 +122,8 @@ def generate_with_metrics(
 def run_benchmark(
     model_name: str,
     max_length: int,
-    output_dir: str = "eval/outputs",
-    num_runs: int = 1,
-    save_generations: bool = True,
+    output_dir: Optional[str] = None,
+    num_runs: int = 3,
 ) -> Dict[str, Any]:
     """
     Run performance benchmark on a model.
@@ -136,7 +135,6 @@ def run_benchmark(
         max_length: Maximum sequence length for generation
         device: Device to run on ('cuda', 'mps', 'cpu')
         num_runs: Number of times to run each prompt
-        save_generations: Whether to save generated text
 
     Returns:
         Dictionary with benchmark results
@@ -155,7 +153,8 @@ def run_benchmark(
         generation = HFBenchTextGeneration(model_name=model_name)
 
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
 
     # Setup metrics tracker
     metrics = PerformanceMetrics()
@@ -195,7 +194,7 @@ def run_benchmark(
                     generation_metrics.total_time,
                 )
 
-                if save_generations:
+                if output_dir:
                     generations.append(
                         {
                             "prompt": prompt,
@@ -291,26 +290,27 @@ def run_benchmark(
     }
 
     # Save results
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_shortname = model_name.split("/")[-1] if model_name else "q"
+    if output_dir:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_shortname = model_name.split("/")[-1] if model_name else "q"
 
-    # Save summary results
-    results_path = os.path.join(
-        output_dir, f"bench_{model_shortname}_{max_length}_{timestamp}.json"
-    )
-    with open(results_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    # Save generations if requested
-    if save_generations and generations:
-        generations_path = os.path.join(
-            output_dir,
-            f"bench_{model_shortname}_{max_length}_generations_{timestamp}.json",
+        # Save summary results
+        results_path = os.path.join(
+            output_dir, f"bench_{model_shortname}_{max_length}_{timestamp}.json"
         )
-        with open(generations_path, "w") as f:
-            json.dump(generations, f, indent=2)
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=2)
 
-    print(f"\nBenchmark complete! Results saved to {results_path}")
+        # Save generations if requested
+        if generations:
+            generations_path = os.path.join(
+                output_dir,
+                f"bench_{model_shortname}_{max_length}_generations_{timestamp}.json",
+            )
+            with open(generations_path, "w") as f:
+                json.dump(generations, f, indent=2)
+
+        print(f"Results saved to {results_path}")
 
     # Print summary
     print("\nSummary:")
@@ -331,21 +331,24 @@ def run_benchmark(
     default="q",
     help='"q" or HuggingFace model name',
 )
-@click.option("--output-path", default="eval/outputs", help="Directory to save results")
+@click.option(
+    "--output-path", "output_path", required=False, help="Directory to save results"
+)
 @click.option(
     "--max-length",
+    "max_length",
     default=64,
     type=int,
     help="Maximum sequence length for generation",
 )
-@click.option("--num-runs", default=3, type=int, help="Number of runs per prompt")
-@click.option("--no-save-generations", is_flag=True, help="Don't save generated text")
+@click.option(
+    "--num-runs", "num_runs", default=3, type=int, help="Number of runs per prompt"
+)
 def main(
     model_name: str,
-    output_path: str,
     max_length: int,
     num_runs: int,
-    no_save_generations: bool,
+    output_path: Optional[str] = None,
 ):
     """Benchmark a transformer model's performance metrics."""
 
@@ -355,7 +358,6 @@ def main(
         output_dir=output_path,
         max_length=max_length,
         num_runs=num_runs,
-        save_generations=not no_save_generations,
     )
 
 
