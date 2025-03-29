@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """
 Benchmark script for measuring language model performance metrics:
-- TTFT (Time to First Token)
 - TPS (Tokens Per Second)
 - Memory Usage
 """
@@ -13,14 +12,13 @@ import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import click
 import psutil
 from tqdm import tqdm
 
 from q.bench.base import BenchTextGeneration
-from q.bench.hf import HFBenchTextGeneration
 
 # Sample prompts for evaluation
 SAMPLE_PROMPTS = [
@@ -80,7 +78,7 @@ def get_memory_usage() -> float:
 def generate_with_metrics(
     model: BenchTextGeneration,
     prompt: str,
-    max_length: int = 100,
+    max_length: int,
 ) -> GenerationMetrics:
     """
     Generate text from a prompt and measure performance metrics.
@@ -122,9 +120,9 @@ def generate_with_metrics(
 
 
 def run_benchmark(
-    model_name: str,
+    model_name: Optional[str],
+    max_length: int,
     output_dir: str = "eval/outputs",
-    max_length: int = 100,
     num_runs: int = 1,
     save_generations: bool = True,
 ) -> Dict[str, Any]:
@@ -145,9 +143,16 @@ def run_benchmark(
     """
     prompts = SAMPLE_PROMPTS
 
-    # Load model and tokenizer
-    print(f"Loading model: {model_name}")
-    generation = HFBenchTextGeneration(model_name=model_name)
+    if model_name is None:
+        from q.bench.q import QBenchTextGeneration
+
+        generation = QBenchTextGeneration()
+    else:
+        from q.bench.hf import HFBenchTextGeneration
+
+        # Load model and tokenizer
+        print(f"Loading model: {model_name}")
+        generation = HFBenchTextGeneration(model_name=model_name)
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -287,7 +292,7 @@ def run_benchmark(
 
     # Save results
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_shortname = model_name.split("/")[-1]
+    model_shortname = model_name.split("/")[-1] if model_name else "q"
 
     # Save summary results
     results_path = os.path.join(output_dir, f"bench_{model_shortname}_{timestamp}.json")
@@ -306,7 +311,6 @@ def run_benchmark(
 
     # Print summary
     print("\nSummary:")
-    print(f"  Average TTFT: {final_stats['ttft']['mean']:.4f}s")
     print(f"  Average TPS: {final_stats['tps']['mean']:.2f} tokens/sec")
     print(f"  Average Total Memory: {avg_peak_memory:.2f}MB")
     print(f"  Maximum Total Memory: {max_peak_memory:.2f}MB")
@@ -317,7 +321,7 @@ def run_benchmark(
 
 
 @click.command()
-@click.option("--pretrained", required=True, help="HuggingFace model name or path")
+@click.option("--pretrained", required=False, help="HuggingFace model name or path")
 @click.option("--output-path", default="eval/outputs", help="Directory to save results")
 @click.option(
     "--max-length",
