@@ -91,13 +91,15 @@ and we have [our evaluation script](eval/lm-eval.sh).
 | ------------------------------------------------------------ | ----- | ----- | ----- |
 | Q (124M)                                                     | 47.33 | 33.6  | 19.6  |
 | [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 53.96 | 51.56 | 54.76 |
+| [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B)     | 21.80 | 22.33 | 22.24 |
 
 ### Peak Memory (Average, MB)
 
-| `max_length`                                                 | 64     | 128    | 256     |
-| ------------------------------------------------------------ | ------ | ------ | ------- |
-| Q (124M)                                                     | 780.37 | 581.89 | 537.33  |
-| [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 781.96 | 974.82 | 1358.00 |
+| `max_length`                                                 | 64      | 128     | 256     |
+| ------------------------------------------------------------ | ------- | ------- | ------- |
+| Q (124M)                                                     | 780.37  | 581.89  | 537.33  |
+| [GPT-2](https://huggingface.co/openai-community/gpt2) (124M) | 781.96  | 974.82  | 1358.00 |
+| [Qwen2.5-0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B)     | 1257.32 | 1292.65 | 1284.94 |
 
 ## References
 
