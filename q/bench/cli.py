@@ -13,14 +13,14 @@ import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from threading import Thread
 from typing import Any, Dict, List
 
 import click
 import psutil
-import torch
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+
+from q.bench.base import BenchTextGeneration
+from q.bench.hf import HFBenchTextGeneration
 
 # Sample prompts for evaluation
 SAMPLE_PROMPTS = [
@@ -42,7 +42,6 @@ class GenerationMetrics:
     """Class to hold metrics for a single text generation."""
 
     generated_text: str
-    ttft: float  # Time to First Token in seconds
     tps: float  # Tokens Per Second
     peak_memory: float  # Peak memory usage in MB
     token_count: int  # Number of tokens generated
@@ -53,7 +52,6 @@ class PerformanceMetrics:
     """Class to track and calculate model performance metrics."""
 
     def __init__(self):
-        self.ttft_samples: List[float] = []
         self.tps_samples: List[float] = []
         self.memory_samples: List[float] = []
         self.token_counts: List[int] = []
@@ -61,14 +59,12 @@ class PerformanceMetrics:
 
     def add_sample(
         self,
-        ttft: float,
         tps: float,
         memory_usage: float,
         token_count: int,
         generation_time: float,
     ):
         """Add a performance sample to the metrics."""
-        self.ttft_samples.append(ttft)
         self.tps_samples.append(tps)
         self.memory_samples.append(memory_usage)
         self.token_counts.append(token_count)
@@ -82,11 +78,9 @@ def get_memory_usage() -> float:
 
 
 def generate_with_metrics(
-    model,
-    tokenizer,
+    model: BenchTextGeneration,
     prompt: str,
     max_length: int = 100,
-    device: str = "mps",
 ) -> GenerationMetrics:
     """
     Generate text from a prompt and measure performance metrics.
@@ -95,73 +89,31 @@ def generate_with_metrics(
         GenerationMetrics containing metrics for the generation
     """
     # Clear CUDA cache if device is CUDA
-    if device == "cuda" and torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    # if device == "cuda" and torch.cuda.is_available():
+    #    torch.cuda.empty_cache()
 
     # Garbage collect to start with a clean slate
     gc.collect()
 
-    # Record initial memory
-    initial_memory = get_memory_usage()
-    peak_memory = initial_memory
-
-    # Tokenize the prompt
-    input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
-
-    # Set up streamer for monitoring token generation
-    streamer = TextIteratorStreamer(
-        tokenizer, skip_prompt=True, skip_special_tokens=True
-    )
-
-    # Prepare generation parameters
-    generation_kwargs = {
-        "input_ids": input_ids,
-        "max_length": max_length,
-        "temperature": 1.0,
-        "streamer": streamer,
-    }
-
     # Start generation in a separate thread
     start_time = time.time()
-    thread = Thread(target=model.generate, kwargs=generation_kwargs)
-    thread.start()
+    output = model.generate(
+        prompt=prompt,
+        max_length=max_length,
+    )
 
-    # Monitor token generation
-    first_token_time = None
-    generated_text = ""
-    token_count = 0
-
-    for new_text in streamer:
-        if first_token_time is None:
-            first_token_time = time.time()
-
-        # Check current memory after each token for peak tracking
-        current_memory = get_memory_usage()
-        peak_memory = max(peak_memory, current_memory)
-
-        generated_text += new_text
-        token_count += 1
-
-    # Wait for the thread to complete
-    thread.join()
     end_time = time.time()
 
-    # One final memory check after thread completes
-    current_memory = get_memory_usage()
-    peak_memory = max(peak_memory, current_memory)
+    generated_text = output.generated_text
+    token_count = output.token_count
+    peak_memory = output.peak_memory
 
     # Calculate metrics
-    ttft = first_token_time - start_time if first_token_time else 0
     total_time = end_time - start_time
-    tps = (
-        token_count / (total_time - ttft)
-        if token_count > 0 and (total_time - ttft) > 0
-        else 0
-    )
+    tps = (token_count / total_time) if token_count > 0 and total_time > 0 else 0
 
     return GenerationMetrics(
         generated_text=generated_text,
-        ttft=ttft,
         tps=tps,
         peak_memory=peak_memory,
         token_count=token_count,
@@ -173,7 +125,6 @@ def run_benchmark(
     model_name: str,
     output_dir: str = "eval/outputs",
     max_length: int = 100,
-    device: str = "mps",
     num_runs: int = 1,
     save_generations: bool = True,
 ) -> Dict[str, Any]:
@@ -196,12 +147,7 @@ def run_benchmark(
 
     # Load model and tokenizer
     print(f"Loading model: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float16 if device in ["cuda", "mps"] else torch.float32,
-        device_map=device,
-    )
+    generation = HFBenchTextGeneration(model_name=model_name)
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -221,11 +167,9 @@ def run_benchmark(
         for run in tqdm(range(num_runs), desc=f"Prompt {prompt_idx+1}/{len(prompts)}"):
             try:
                 generation_metrics = generate_with_metrics(
-                    model=model,
-                    tokenizer=tokenizer,
+                    model=generation,
                     prompt=prompt,
                     max_length=max_length,
-                    device=device,
                 )
 
                 # Track peak memory
@@ -234,14 +178,12 @@ def run_benchmark(
 
                 # Add to metrics
                 metrics.add_sample(
-                    generation_metrics.ttft,
                     generation_metrics.tps,
                     generation_metrics.peak_memory,
                     generation_metrics.token_count,
                     generation_metrics.total_time,
                 )
                 prompt_metrics.add_sample(
-                    generation_metrics.ttft,
                     generation_metrics.tps,
                     generation_metrics.peak_memory,
                     generation_metrics.token_count,
@@ -256,7 +198,6 @@ def run_benchmark(
                             "prompt_idx": prompt_idx,
                             "run": run,
                             "metrics": {
-                                "ttft": generation_metrics.ttft,
                                 "tps": generation_metrics.tps,
                                 "peak_memory_mb": generation_metrics.peak_memory,
                                 "token_count": generation_metrics.token_count,
@@ -265,20 +206,11 @@ def run_benchmark(
                         }
                     )
 
-                # Give GPU some time to cool down between runs if using CUDA
-                if device == "cuda":
-                    time.sleep(0.5)
-
             except Exception as e:
                 print(f"Error during generation: {e}")
-                continue
+                raise
 
         # Print prompt summary
-        ttft_mean = (
-            statistics.mean(prompt_metrics.ttft_samples)
-            if prompt_metrics.ttft_samples
-            else 0
-        )
         tps_mean = (
             statistics.mean(prompt_metrics.tps_samples)
             if prompt_metrics.tps_samples
@@ -295,23 +227,12 @@ def run_benchmark(
 
         print(f"\nPrompt {prompt_idx+1} Summary:")
         print(
-            f"  TTFT: {ttft_mean:.4f}s (median: {statistics.median(prompt_metrics.ttft_samples):.4f}s)"
-        )
-        print(
             f"  TPS: {tps_mean:.2f} tokens/sec (median: {statistics.median(prompt_metrics.tps_samples):.2f})"
         )
         print(f"  Memory Usage: {memory_mean:.2f}MB (peak: {memory_max:.2f}MB)")
 
     # Calculate statistics
     final_stats = {
-        "ttft": {
-            "mean": (
-                statistics.mean(metrics.ttft_samples) if metrics.ttft_samples else 0
-            ),
-            "median": (
-                statistics.median(metrics.ttft_samples) if metrics.ttft_samples else 0
-            ),
-        },
         "tps": {
             "mean": statistics.mean(metrics.tps_samples) if metrics.tps_samples else 0,
             "median": (
@@ -349,7 +270,7 @@ def run_benchmark(
     # Create benchmark results
     results = {
         "model": model_name,
-        "device": device,
+        "device": "mps",
         "parameters": {
             "max_length": max_length,
             "temperature": 1.0,
@@ -387,8 +308,6 @@ def run_benchmark(
     print("\nSummary:")
     print(f"  Average TTFT: {final_stats['ttft']['mean']:.4f}s")
     print(f"  Average TPS: {final_stats['tps']['mean']:.2f} tokens/sec")
-    print(f"  Average Memory Increase: {final_stats['memory_usage_mb']['mean']:.2f}MB")
-    print(f"  Peak Memory Increase: {final_stats['memory_usage_mb']['max']:.2f}MB")
     print(f"  Average Total Memory: {avg_peak_memory:.2f}MB")
     print(f"  Maximum Total Memory: {max_peak_memory:.2f}MB")
     print(f"  Total Tokens Generated: {final_stats['token_counts']['total']}")
@@ -406,36 +325,22 @@ def run_benchmark(
     type=int,
     help="Maximum sequence length for generation",
 )
-@click.option(
-    "--device", default="mps", type=str, help="Device to run on (cuda, mps, cpu)"
-)
 @click.option("--num-runs", default=3, type=int, help="Number of runs per prompt")
 @click.option("--no-save-generations", is_flag=True, help="Don't save generated text")
 def main(
     pretrained: str,
     output_path: str,
     max_length: int,
-    device: str,
     num_runs: int,
     no_save_generations: bool,
 ):
     """Benchmark a transformer model's performance metrics."""
-    # Set device
-    if device == "cuda" and not torch.cuda.is_available():
-        print("CUDA not available, falling back to CPU")
-        device = "cpu"
-    elif device == "mps" and not torch.backends.mps.is_available():
-        print("MPS not available, falling back to CPU")
-        device = "cpu"
-
-    print(f"Running on device: {device}")
 
     # Run benchmark
     run_benchmark(
         model_name=pretrained,
         output_dir=output_path,
         max_length=max_length,
-        device=device,
         num_runs=num_runs,
         save_generations=not no_save_generations,
     )
