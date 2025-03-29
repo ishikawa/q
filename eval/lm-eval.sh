@@ -13,24 +13,9 @@ poetry run python -m q.eval --model q \
     --tasks $TASKS \
     --batch_size $BATCH_SIZE
 
-# q (355M)
-# poetry run python -m q.eval --model q \
-#     --model_args model_size=355M \
-#     --output_path $OUTPUT_PATH \
-#     --tasks $TASKS \
-#     --batch_size $BATCH_SIZE
-
 # GPT-2 (124M)
-poetry run lm_eval --model hf \
-    --model_args pretrained=gpt2 \
-    --output_path $OUTPUT_PATH \
-    --tasks $TASKS \
-    --device $DEVICE \
-    --batch_size $BATCH_SIZE
-
-# GPT-2 (355M)
 # poetry run lm_eval --model hf \
-#     --model_args pretrained=gpt2-medium \
+#     --model_args pretrained=gpt2 \
 #     --output_path $OUTPUT_PATH \
 #     --tasks $TASKS \
 #     --device $DEVICE \
@@ -38,9 +23,9 @@ poetry run lm_eval --model hf \
 
 # Qwen/Qwen2.5-0.5B
 # https://huggingface.co/Qwen/Qwen2.5-0.5B
-poetry run lm_eval --model hf \
-    --model_args pretrained=Qwen/Qwen2.5-0.5B \
-    --output_path $OUTPUT_PATH \
-    --tasks $TASKS \
-    --device $DEVICE \
-    --batch_size $BATCH_SIZE
+# poetry run lm_eval --model hf \
+#     --model_args pretrained=Qwen/Qwen2.5-0.5B \
+#     --output_path $OUTPUT_PATH \
+#     --tasks $TASKS \
+#     --device $DEVICE \
+#     --batch_size $BATCH_SIZE
