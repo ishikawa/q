@@ -12,7 +12,7 @@ import statistics
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import click
 import psutil
@@ -120,7 +120,7 @@ def generate_with_metrics(
 
 
 def run_benchmark(
-    model_name: Optional[str],
+    model_name: str,
     max_length: int,
     output_dir: str = "eval/outputs",
     num_runs: int = 1,
@@ -143,15 +143,15 @@ def run_benchmark(
     """
     prompts = SAMPLE_PROMPTS
 
-    if model_name is None:
+    print(f"Loading model: {model_name}, max_length: {max_length} ===")
+
+    if model_name == "q":
         from q.bench.q import QBenchTextGeneration
 
         generation = QBenchTextGeneration()
     else:
         from q.bench.hf import HFBenchTextGeneration
 
-        # Load model and tokenizer
-        print(f"Loading model: {model_name}")
         generation = HFBenchTextGeneration(model_name=model_name)
 
     # Ensure output directory exists
@@ -295,14 +295,17 @@ def run_benchmark(
     model_shortname = model_name.split("/")[-1] if model_name else "q"
 
     # Save summary results
-    results_path = os.path.join(output_dir, f"bench_{model_shortname}_{timestamp}.json")
+    results_path = os.path.join(
+        output_dir, f"bench_{model_shortname}_{max_length}_{timestamp}.json"
+    )
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
 
     # Save generations if requested
     if save_generations and generations:
         generations_path = os.path.join(
-            output_dir, f"bench_{model_shortname}_generations_{timestamp}.json"
+            output_dir,
+            f"bench_{model_shortname}_{max_length}_generations_{timestamp}.json",
         )
         with open(generations_path, "w") as f:
             json.dump(generations, f, indent=2)
@@ -321,18 +324,24 @@ def run_benchmark(
 
 
 @click.command()
-@click.option("--pretrained", required=False, help="HuggingFace model name or path")
+@click.option(
+    "--model",
+    "model_name",
+    required=True,
+    default="q",
+    help='"q" or HuggingFace model name',
+)
 @click.option("--output-path", default="eval/outputs", help="Directory to save results")
 @click.option(
     "--max-length",
-    default=100,
+    default=64,
     type=int,
     help="Maximum sequence length for generation",
 )
 @click.option("--num-runs", default=3, type=int, help="Number of runs per prompt")
 @click.option("--no-save-generations", is_flag=True, help="Don't save generated text")
 def main(
-    pretrained: str,
+    model_name: str,
     output_path: str,
     max_length: int,
     num_runs: int,
@@ -342,7 +351,7 @@ def main(
 
     # Run benchmark
     run_benchmark(
-        model_name=pretrained,
+        model_name=model_name,
         output_dir=output_path,
         max_length=max_length,
         num_runs=num_runs,
