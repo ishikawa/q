@@ -44,7 +44,6 @@ class GenerationMetrics:
     generated_text: str
     ttft: float  # Time to First Token in seconds
     tps: float  # Tokens Per Second
-    memory_increase: float  # Memory increase in MB
     peak_memory: float  # Peak memory usage in MB
     token_count: int  # Number of tokens generated
     total_time: float  # Total generation time in seconds
@@ -75,51 +74,10 @@ class PerformanceMetrics:
         self.token_counts.append(token_count)
         self.generation_times.append(generation_time)
 
-    def calculate_statistics(self) -> Dict[str, Any]:
-        """Calculate statistics for all metrics."""
-        return {
-            "ttft": {
-                "mean": statistics.mean(self.ttft_samples),
-                "median": statistics.median(self.ttft_samples),
-                "min": min(self.ttft_samples),
-                "max": max(self.ttft_samples),
-                "samples": self.ttft_samples,
-            },
-            "tps": {
-                "mean": statistics.mean(self.tps_samples),
-                "median": statistics.median(self.tps_samples),
-                "min": min(self.tps_samples),
-                "max": max(self.tps_samples),
-                "samples": self.tps_samples,
-            },
-            "memory_usage_mb": {
-                "mean": statistics.mean(self.memory_samples),
-                "median": statistics.median(self.memory_samples),
-                "min": min(self.memory_samples),
-                "max": max(self.memory_samples),
-                "samples": self.memory_samples,
-            },
-            "token_counts": {
-                "mean": statistics.mean(self.token_counts),
-                "total": sum(self.token_counts),
-                "samples": self.token_counts,
-            },
-            "generation_times": {
-                "mean": statistics.mean(self.generation_times),
-                "total": sum(self.generation_times),
-                "samples": self.generation_times,
-            },
-        }
-
 
 def get_memory_usage() -> float:
     """Get current memory usage in MB."""
     process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    memory_full_info = process.memory_full_info()
-
-    print(f"memory_info: {memory_info}")
-    print(f"memory_full_info: {memory_full_info}")
     return process.memory_info().rss / (1024 * 1024)
 
 
@@ -201,14 +159,10 @@ def generate_with_metrics(
         else 0
     )
 
-    # Calculate memory increase from baseline to peak
-    memory_increase = peak_memory - initial_memory
-
     return GenerationMetrics(
         generated_text=generated_text,
         ttft=ttft,
         tps=tps,
-        memory_increase=memory_increase,
         peak_memory=peak_memory,
         token_count=token_count,
         total_time=total_time,
@@ -273,7 +227,6 @@ def run_benchmark(
                     max_length=max_length,
                     device=device,
                 )
-                print("Peak memory usage:", generation_metrics.peak_memory)
 
                 # Track peak memory
                 total_peak_memory += generation_metrics.peak_memory
@@ -283,14 +236,14 @@ def run_benchmark(
                 metrics.add_sample(
                     generation_metrics.ttft,
                     generation_metrics.tps,
-                    generation_metrics.memory_increase,
+                    generation_metrics.peak_memory,
                     generation_metrics.token_count,
                     generation_metrics.total_time,
                 )
                 prompt_metrics.add_sample(
                     generation_metrics.ttft,
                     generation_metrics.tps,
-                    generation_metrics.memory_increase,
+                    generation_metrics.peak_memory,
                     generation_metrics.token_count,
                     generation_metrics.total_time,
                 )
@@ -305,7 +258,6 @@ def run_benchmark(
                             "metrics": {
                                 "ttft": generation_metrics.ttft,
                                 "tps": generation_metrics.tps,
-                                "memory_usage_mb": generation_metrics.memory_increase,
                                 "peak_memory_mb": generation_metrics.peak_memory,
                                 "token_count": generation_metrics.token_count,
                                 "total_time": generation_metrics.total_time,
@@ -322,20 +274,72 @@ def run_benchmark(
                 continue
 
         # Print prompt summary
-        prompt_stats = prompt_metrics.calculate_statistics()
-        print(f"\nPrompt {prompt_idx+1} Summary:")
-        print(
-            f"  TTFT: {prompt_stats['ttft']['mean']:.4f}s (median: {prompt_stats['ttft']['median']:.4f}s)"
+        ttft_mean = (
+            statistics.mean(prompt_metrics.ttft_samples)
+            if prompt_metrics.ttft_samples
+            else 0
         )
-        print(
-            f"  TPS: {prompt_stats['tps']['mean']:.2f} tokens/sec (median: {prompt_stats['tps']['median']:.2f})"
+        tps_mean = (
+            statistics.mean(prompt_metrics.tps_samples)
+            if prompt_metrics.tps_samples
+            else 0
         )
-        print(
-            f"  Memory Increase: {prompt_stats['memory_usage_mb']['mean']:.2f}MB (peak increase: {prompt_stats['memory_usage_mb']['max']:.2f}MB)"
+        memory_mean = (
+            statistics.mean(prompt_metrics.memory_samples)
+            if prompt_metrics.memory_samples
+            else 0
+        )
+        memory_max = (
+            max(prompt_metrics.memory_samples) if prompt_metrics.memory_samples else 0
         )
 
+        print(f"\nPrompt {prompt_idx+1} Summary:")
+        print(
+            f"  TTFT: {ttft_mean:.4f}s (median: {statistics.median(prompt_metrics.ttft_samples):.4f}s)"
+        )
+        print(
+            f"  TPS: {tps_mean:.2f} tokens/sec (median: {statistics.median(prompt_metrics.tps_samples):.2f})"
+        )
+        print(f"  Memory Usage: {memory_mean:.2f}MB (peak: {memory_max:.2f}MB)")
+
     # Calculate statistics
-    final_stats = metrics.calculate_statistics()
+    final_stats = {
+        "ttft": {
+            "mean": (
+                statistics.mean(metrics.ttft_samples) if metrics.ttft_samples else 0
+            ),
+            "median": (
+                statistics.median(metrics.ttft_samples) if metrics.ttft_samples else 0
+            ),
+        },
+        "tps": {
+            "mean": statistics.mean(metrics.tps_samples) if metrics.tps_samples else 0,
+            "median": (
+                statistics.median(metrics.tps_samples) if metrics.tps_samples else 0
+            ),
+        },
+        "memory_usage_mb": {
+            "mean": (
+                statistics.mean(metrics.memory_samples) if metrics.memory_samples else 0
+            ),
+            "max": max(metrics.memory_samples) if metrics.memory_samples else 0,
+        },
+        "token_counts": {
+            "total": sum(metrics.token_counts),
+            "mean": (
+                statistics.mean(metrics.token_counts) if metrics.token_counts else 0
+            ),
+        },
+        "generation_times": {
+            "total": sum(metrics.generation_times),
+            "mean": (
+                statistics.mean(metrics.generation_times)
+                if metrics.generation_times
+                else 0
+            ),
+        },
+    }
+
     avg_peak_memory = (
         total_peak_memory / (len(prompts) * num_runs)
         if len(prompts) * num_runs > 0

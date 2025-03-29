@@ -17,7 +17,7 @@ int main()
     }
 
     // 確保したメモリに適当な値を書き込む
-    memset(memory, 42, FIFTY_MB); // 42という値で埋める
+    memset(memory, 43, FIFTY_MB); // 42という値で埋める
     printf("Allocated 50MB of memory and filled with data\n");
 
     while (1) // 無限ループに変更
@@ -30,9 +30,13 @@ int main()
                                      &count);
         if (kr == KERN_SUCCESS)
         {
-            printf("phys_footprint: %llu bytes\n", info.phys_footprint);
-            printf("resident_size:  %llu bytes\n", info.resident_size);
-            printf("virtual_size:   %llu bytes\n", info.virtual_size);
+            printf("phys_footprint: %.2fMB %llu bytes\n", (info.phys_footprint / 1024.0 / 1024.0), info.phys_footprint);
+            printf("resident_size:  %.2fMB %llu bytes\n", (info.resident_size / 1024.0 / 1024.0), info.resident_size);
+            printf("virtual_size:   %.2fMB %llu bytes\n", (info.virtual_size / 1024.0 / 1024.0), info.virtual_size);
+            printf("internal:   %.2fMB %llu bytes\n", (info.internal / 1024.0 / 1024.0), info.internal);
+            printf("external:   %.2fMB %.2fKB %llu bytes\n", (info.external / 1024.0 / 1024.0), (info.external / 1024.0), info.external);
+            printf("reusable:   %.2fMB %llu bytes\n", (info.reusable / 1024.0 / 1024.0), info.reusable);
+            printf("compressed: %.2fMB %llu bytes\n", (info.compressed / 1024.0 / 1024.0), info.compressed);
             printf("------------------------------\n"); // 区切り線を追加
         }
 
