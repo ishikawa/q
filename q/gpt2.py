@@ -127,58 +127,58 @@ def attention(q, k, v, mask):
     return mx.matmul(weights, v)  # (batch, seq_len, head_dim)
 
 
-# multi-head attention
 def mha(
     x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int, past_k=None, past_v=None
 ) -> tuple[
-    mx.array,  # (batch, seq_len, emb)
-    mx.array,  # k
-    mx.array,  # v
+    mx.array,  # output: (batch, seq_len, emb)
+    mx.array,  # k: (batch, total_seq_len, n_head, head_dim)
+    mx.array,  # v: (batch, total_seq_len, n_head, head_dim)
 ]:
-    # qkv projection
-    qkv = linear(x, **c_attn)  # (batch, seq_len, 3*emb)
+    # qkv projection: (batch, seq_len, 3*emb)
+    qkv = linear(x, **c_attn)
     q, k, v = mx.split(qkv, 3, axis=-1)
 
-    # split into heads → list of length n_head; each (batch, seq_len, head_dim)
-    q_heads = mx.split(q, n_head, axis=-1)
-    k_heads = mx.split(k, n_head, axis=-1)
-    v_heads = mx.split(v, n_head, axis=-1)
+    batch, seq_len, embed_dim = q.shape
+    head_dim = embed_dim // n_head
 
-    # If `past_k` and `past_v` are provided, concatenate them with the new keys and values
-    new_k_heads: mx.array = k_heads
-    new_v_heads: mx.array = v_heads
+    # Reshape q, k, v to (batch, seq_len, n_head, head_dim)
+    q = mx.reshape(q, (batch, seq_len, n_head, head_dim))
+    k = mx.reshape(k, (batch, seq_len, n_head, head_dim))
+    v = mx.reshape(v, (batch, seq_len, n_head, head_dim))
 
+    # If past keys/values exist, concatenate them along the sequence dimension (axis=1)
     if past_k is not None and past_v is not None:
-        # Concatenate past keys and values with the new keys and values
-        ks: list[mx.array] = []
-        vs: list[mx.array] = []
+        # Expecting past_k, past_v to have shape (batch, past_seq_len, n_head, head_dim)
+        k = mx.concatenate([past_k, k], axis=1)
+        v = mx.concatenate([past_v, v], axis=1)
 
-        for i in range(n_head):
-            new_k = mx.concatenate([past_k[i], k_heads[i]], axis=1)
-            new_v = mx.concatenate([past_v[i], v_heads[i]], axis=1)
-            ks.append(new_k)
-            vs.append(new_v)
+    total_seq_len = k.shape[1]  # total sequence length including past
 
-        new_k_heads = mx.concatenate(ks)
-        new_v_heads = mx.concatenate(vs)
+    # Rearrange tensors for attention: (batch, n_head, seq_len, head_dim)
+    q = mx.transpose(q, (0, 2, 1, 3))
+    k = mx.transpose(k, (0, 2, 1, 3))
+    v = mx.transpose(v, (0, 2, 1, 3))
 
-    total_seq_len = new_k_heads[0].shape[1]
+    # Scaled dot-product attention
+    # scores: (batch, n_head, seq_len, total_seq_len)
+    scores = mx.matmul(q, mx.transpose(k, (0, 1, 3, 2))) / mx.sqrt(mx.array(head_dim))
 
-    # causal mask: (seq_len, seq_len) → (1, seq_len, seq_len)
+    # Create causal mask with shape (1, 1, total_seq_len, total_seq_len)
     causal_mask = (1 - mx.tri(total_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
-    causal_mask = mx.expand_dims(causal_mask, axis=0)
+    causal_mask = causal_mask.reshape((1, 1, total_seq_len, total_seq_len))
+    scores = scores + causal_mask
 
-    # per‑head attention
-    out_heads = [
-        attention(qh, kh, vh, causal_mask)
-        for qh, kh, vh in zip(q_heads, new_k_heads, new_v_heads)
-    ]  # list of (batch, seq_len, head_dim)
+    # Compute attention weights and context
+    weights = softmax(scores)  # (batch, n_head, seq_len, total_seq_len)
+    context = mx.matmul(weights, v)  # (batch, n_head, seq_len, head_dim)
 
-    # concat heads → (batch, seq_len, emb)
-    concat = mx.concatenate(out_heads, axis=-1)
-    output = linear(concat, **c_proj)
+    # Rearrange back: (batch, seq_len, n_head, head_dim)
+    context = mx.transpose(context, (0, 2, 1, 3))
+    # Reshape to (batch, seq_len, embed_dim)
+    context = mx.reshape(context, (batch, seq_len, embed_dim))
+    output = linear(context, **c_proj)
 
-    return output, new_k_heads, new_v_heads
+    return output, k, v
 
 
 def transformer_block(
