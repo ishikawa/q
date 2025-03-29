@@ -66,8 +66,5 @@ class TokenGenerator:
 
             # greedy sampling
             last_token_logits = logits[0, -1]  # shape: [n_vocab]
-            next_id = mx.argmax(last_token_logits)
-
-            # append prediction to input
-            next_token = int(next_id)
+            next_token = int(mx.argmax(last_token_logits))
             yield next_token

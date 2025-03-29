@@ -163,7 +163,7 @@ def mha(
         v = mx.concatenate([past_v, v], axis=1)
 
     total_seq_len = k.shape[1]  # total sequence length including past
-    new_seq_len = q.shape[1]  # sequence length for the new input (usually 1)
+    past_seq_len = total_seq_len - seq_len  # length of past sequence
 
     # Rearrange tensors for attention: (batch, n_head, seq_len, head_dim)
     # We only transpose for the attention computation.
@@ -176,19 +176,38 @@ def mha(
         mx.array(head_dim)
     )
 
-    # Create causal mask with shape (1, 1, new_seq_len, total_seq_len)
-    causal_mask = (1 - mx.tri(new_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
-    causal_mask = causal_mask.reshape((1, 1, new_seq_len, total_seq_len))
-    scores = scores + causal_mask
+    # Create a mask that allows each position to attend to all previously generated tokens
+    # but not to future tokens. For KV cache, we need a mask that allows attendance to
+    # past positions.
+    mask = mx.zeros((1, 1, seq_len, total_seq_len))
+    if past_seq_len > 0:
+        # For each new token, we can attend to all past tokens
+        # No masking needed for past positions
+        mask_future = (1 - mx.tri(seq_len, seq_len, k=0, dtype=x.dtype)) * -1e10
+        mask = mx.concatenate(
+            [
+                mx.zeros((1, 1, seq_len, past_seq_len)),  # No mask for past positions
+                mask_future.reshape(
+                    (1, 1, seq_len, seq_len)
+                ),  # Only mask future positions in current sequence
+            ],
+            axis=3,
+        )
+    else:
+        # Standard causal mask when there's no past
+        mask = (1 - mx.tri(seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
+        mask = mask.reshape((1, 1, seq_len, total_seq_len))
+
+    scores = scores + mask
 
     # Compute attention weights and context
-    weights = softmax(scores)  # (batch, n_head, new_seq_len, total_seq_len)
-    context = mx.matmul(weights, v_t)  # (batch, n_head, new_seq_len, head_dim)
+    weights = softmax(scores)  # (batch, n_head, seq_len, total_seq_len)
+    context = mx.matmul(weights, v_t)  # (batch, n_head, seq_len, head_dim)
 
-    # Rearrange context back to (batch, new_seq_len, n_head, head_dim)
+    # Rearrange context back to (batch, seq_len, n_head, head_dim)
     context = mx.transpose(context, (0, 2, 1, 3))
-    # Reshape to (batch, new_seq_len, embed_dim)
-    context = mx.reshape(context, (batch, new_seq_len, embed_dim))
+    # Reshape to (batch, seq_len, embed_dim)
+    context = mx.reshape(context, (batch, seq_len, embed_dim))
     output = linear(context, **c_proj)
 
     # Return output and the keys/values in original shape:
@@ -231,11 +250,19 @@ def gpt2(
     # kv
     list[tuple[mx.array, mx.array]],
 ]:
-    seq_length: int = int(inputs.shape[1])
+    batch_size, seq_length = inputs.shape
+
+    # Set the position indices correctly for KV cache
+    pos_start = 0
+    if past_key_values is not None and past_key_values[0][0] is not None:
+        # If using KV cache, position should start after the cached sequence
+        pos_start = past_key_values[0][0].shape[
+            1
+        ]  # Get length from first cached KV pair
 
     # token + positional embeddings
     token_embed = wte[inputs]  # (batch_size, sequence_length, n_embd)
-    pos_indices = mx.array(list(range(seq_length)))
+    pos_indices = mx.array(list(range(pos_start, pos_start + seq_length)))
     pos_embed = wpe[pos_indices]  # (sequence_length, n_embd)
     pos_embed = mx.expand_dims(pos_embed, axis=0)  # (1, sequence_length, n_embd)
 
