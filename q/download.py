@@ -5,7 +5,7 @@ import os
 import re
 from typing import Literal
 
-from q.common import GPT2Params
+from q.common import DEFAULT_MODELS_DIR, GPT2Params
 from q.params import save_params_to_safetensors
 
 
@@ -126,7 +126,7 @@ def main():
     parser.add_argument(
         "--models-dir",
         type=str,
-        default="models",
+        default=DEFAULT_MODELS_DIR,
         help="Directory where models are stored",
     )
     parser.add_argument(

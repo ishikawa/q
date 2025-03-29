@@ -2,7 +2,7 @@ import os
 
 import psutil
 
-from q.common import ModelSize
+from q.common import DEFAULT_MODELS_DIR, ModelSize
 from q.encoder import load_encoder
 from q.generation import TokenGenerator
 from q.gpt2 import GPT2Model
@@ -10,15 +10,13 @@ from q.params import load_hparams_and_params
 
 from .base import BenchTextGeneration, BenchTextGenerationOutput
 
-DEFAULT_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-
 
 class QBenchTextGeneration(BenchTextGeneration):
 
     def __init__(
         self,
         model_size: ModelSize = "124M",
-        models_dir: str = "models",
+        models_dir: str = DEFAULT_MODELS_DIR,
     ):
         self.encoder = load_encoder(model_size, models_dir)
         hparams, params = load_hparams_and_params(
