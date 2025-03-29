@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -19,6 +20,9 @@ class GPT2Output:
     #
     # Tensor shape: (batch_size, sequence_length, config.vocab_size)
     logits: mx.array
+
+    # List of (past_k, past_v) cache for each block
+    past_key_values: list[tuple[mx.array, mx.array]]
 
     # Language modeling loss for next-token prediction.
     #
@@ -48,13 +52,19 @@ class GPT2Model:
         inputs: mx.array,
         *,
         compute_loss: bool = False,
+        past_key_values: Optional[list[tuple[mx.array, mx.array]]] = None,
     ) -> GPT2Output:
         if inputs.ndim != 2:
             raise ValueError(
                 f"inputs must be 2D (batch_size, sequence_length) tensor, but got {inputs.ndim} ndim."
             )
 
-        logits = gpt2(inputs, **self.params, n_head=self.hparams["n_head"])
+        logits, kv = gpt2(
+            inputs,
+            **self.params,
+            n_head=self.hparams["n_head"],
+            past_key_values=past_key_values,
+        )
 
         if (
             compute_loss and inputs.shape[1] > 1
@@ -79,9 +89,9 @@ class GPT2Model:
             # Average loss across sequence positions
             loss = mx.mean(loss)
 
-            return GPT2Output(logits=logits, loss=loss)
+            return GPT2Output(logits=logits, loss=loss, past_key_values=kv)
 
-        return GPT2Output(logits=logits)
+        return GPT2Output(logits=logits, past_key_values=kv)
 
 
 def gelu(x):
@@ -130,7 +140,7 @@ def attention(q, k, v, mask):
 def mha(
     x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int, past_k=None, past_v=None
 ) -> tuple[
-    mx.array,  # output: (batch, seq_len, emb)
+    mx.array,  # output: (batch, new_seq_len, emb)
     mx.array,  # k: (batch, total_seq_len, n_head, head_dim)
     mx.array,  # v: (batch, total_seq_len, n_head, head_dim)
 ]:
@@ -148,36 +158,41 @@ def mha(
 
     # If past keys/values exist, concatenate them along the sequence dimension (axis=1)
     if past_k is not None and past_v is not None:
-        # Expecting past_k, past_v to have shape (batch, past_seq_len, n_head, head_dim)
+        # Expected shape for past_k, past_v: (batch, past_seq_len, n_head, head_dim)
         k = mx.concatenate([past_k, k], axis=1)
         v = mx.concatenate([past_v, v], axis=1)
 
     total_seq_len = k.shape[1]  # total sequence length including past
+    new_seq_len = q.shape[1]  # sequence length for the new input (usually 1)
 
     # Rearrange tensors for attention: (batch, n_head, seq_len, head_dim)
-    q = mx.transpose(q, (0, 2, 1, 3))
-    k = mx.transpose(k, (0, 2, 1, 3))
-    v = mx.transpose(v, (0, 2, 1, 3))
+    # We only transpose for the attention computation.
+    q_t = mx.transpose(q, (0, 2, 1, 3))
+    k_t = mx.transpose(k, (0, 2, 1, 3))
+    v_t = mx.transpose(v, (0, 2, 1, 3))
 
     # Scaled dot-product attention
-    # scores: (batch, n_head, seq_len, total_seq_len)
-    scores = mx.matmul(q, mx.transpose(k, (0, 1, 3, 2))) / mx.sqrt(mx.array(head_dim))
+    scores = mx.matmul(q_t, mx.transpose(k_t, (0, 1, 3, 2))) / mx.sqrt(
+        mx.array(head_dim)
+    )
 
-    # Create causal mask with shape (1, 1, total_seq_len, total_seq_len)
-    causal_mask = (1 - mx.tri(total_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
-    causal_mask = causal_mask.reshape((1, 1, total_seq_len, total_seq_len))
+    # Create causal mask with shape (1, 1, new_seq_len, total_seq_len)
+    causal_mask = (1 - mx.tri(new_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
+    causal_mask = causal_mask.reshape((1, 1, new_seq_len, total_seq_len))
     scores = scores + causal_mask
 
     # Compute attention weights and context
-    weights = softmax(scores)  # (batch, n_head, seq_len, total_seq_len)
-    context = mx.matmul(weights, v)  # (batch, n_head, seq_len, head_dim)
+    weights = softmax(scores)  # (batch, n_head, new_seq_len, total_seq_len)
+    context = mx.matmul(weights, v_t)  # (batch, n_head, new_seq_len, head_dim)
 
-    # Rearrange back: (batch, seq_len, n_head, head_dim)
+    # Rearrange context back to (batch, new_seq_len, n_head, head_dim)
     context = mx.transpose(context, (0, 2, 1, 3))
-    # Reshape to (batch, seq_len, embed_dim)
-    context = mx.reshape(context, (batch, seq_len, embed_dim))
+    # Reshape to (batch, new_seq_len, embed_dim)
+    context = mx.reshape(context, (batch, new_seq_len, embed_dim))
     output = linear(context, **c_proj)
 
+    # Return output and the keys/values in original shape:
+    # k and v: (batch, total_seq_len, n_head, head_dim)
     return output, k, v
 
 
@@ -206,8 +221,16 @@ def gpt2(
     wpe: mx.array,
     blocks: list,
     ln_f: GPT2LayerNormParams,
+    *,
     n_head: int,
-):
+    # List of (past_k, past_v) cache for each block
+    past_key_values: Optional[list[tuple[mx.array, mx.array]]] = None,
+) -> tuple[
+    # logits
+    mx.array,
+    # kv
+    list[tuple[mx.array, mx.array]],
+]:
     seq_length: int = int(inputs.shape[1])
 
     # token + positional embeddings
@@ -217,15 +240,21 @@ def gpt2(
     pos_embed = mx.expand_dims(pos_embed, axis=0)  # (1, sequence_length, n_embd)
 
     x = token_embed + pos_embed  # (batch_size, sequence_length, n_embd)
+    new_past_kv: list[tuple[mx.array, mx.array]] = []
 
     # forward pass through n_layer transformer blocks
-    for block in blocks:
-        # (n_seq, n_embd) -> (n_seq, n_embd)
-        x, k, v = transformer_block(x, **block, n_head=n_head)
+    for i, block in enumerate(blocks):
+        past_k, past_v = (
+            past_key_values[i] if past_key_values is not None else (None, None)
+        )
+        x, k, v = transformer_block(
+            x, **block, n_head=n_head, past_k=past_k, past_v=past_v
+        )
+        new_past_kv.append((k, v))
 
     # projection to vocab
     x = layer_norm(x, **ln_f)  # (n_seq, n_embd) -> (n_seq, n_embd)
     logits = x @ wte.T  # (n_seq, n_embd) -> (n_seq, n_vocab)
 
     # reshape to (batch_size=1, sequence_length, vocab_size)
-    return logits
+    return logits, new_past_kv

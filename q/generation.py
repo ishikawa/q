@@ -49,12 +49,20 @@ class TokenGenerator:
                 f"max_length {max_length} exceeds model context length {self.model.hparams['n_ctx']}."
             )
 
-        # clone inputs to avoid modifying the original list
-        inputs_array = mx.array([inputs])
+        kv_cache = None
+        next_token = None
 
         for _ in range(max_new_tokens):  # auto-regressive decode loop
-            # model forward pass (shape: [1, n_seq, n_vocab])
-            logits = self.model(inputs_array).logits
+            if kv_cache is None:
+                # initialize kv_cache for the first token
+                x = self.model(mx.array([inputs]))
+            else:
+                assert next_token is not None
+                new_input = mx.array([[next_token]])
+                x = self.model(new_input, past_key_values=kv_cache)
+
+            logits = x.logits
+            kv_cache = x.past_key_values
 
             # greedy sampling
             last_token_logits = logits[0, -1]  # shape: [n_vocab]
@@ -62,6 +70,4 @@ class TokenGenerator:
 
             # append prediction to input
             next_token = int(next_id)
-            inputs_array = mx.concat([inputs_array, mx.array([[next_token]])], axis=1)
-
             yield next_token
