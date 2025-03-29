@@ -5,7 +5,7 @@ from typing import Callable, Optional
 
 from tqdm import tqdm
 
-from .common import ModelSize
+from .common import DEFAULT_MODELS_DIR, ModelSize
 from .encoder import load_encoder
 from .generation import TokenGenerator
 from .gpt2 import GPT2Model
@@ -24,7 +24,7 @@ def run(
     max_length: int = 40,
     max_new_tokens: Optional[int] = None,
     model_size: ModelSize = "124M",
-    models_dir: str = "models",
+    models_dir: str = DEFAULT_MODELS_DIR,
     stream: Optional[Callable[[str], None]] = None,
 ) -> GPTResult:
 

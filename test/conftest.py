@@ -1,8 +1,6 @@
-import os
-
 import pytest
 
-from q.common import ModelSize
+from q.common import DEFAULT_MODELS_DIR, ModelSize
 from q.encoder import Encoder, load_encoder
 from q.gpt2 import GPT2Model
 from q.params import load_hparams_and_params
@@ -15,7 +13,7 @@ def model_size() -> ModelSize:
 
 @pytest.fixture(scope="session")
 def model_dir() -> str:
-    return os.path.join(os.path.dirname(__file__), "..", "models")
+    return DEFAULT_MODELS_DIR
 
 
 @pytest.fixture(scope="session")

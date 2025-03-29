@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Any, Iterator, List, Literal, Optional, Tuple
 
 import mlx.core as mx
@@ -12,15 +11,13 @@ from lm_eval.models.utils import Collator
 from mlx.nn import log_softmax
 from tqdm import tqdm
 
-from .common import ModelSize
+from .common import DEFAULT_MODELS_DIR, ModelSize
 from .encoder import Encoder, load_encoder
 from .generation import TokenGenerator
 from .gpt2 import GPT2Model
 from .params import load_hparams_and_params
 
 eval_logger = logging.getLogger(__name__)
-
-DEFAULT_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 
 
 @register_model("q")

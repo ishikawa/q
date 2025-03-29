@@ -102,7 +102,9 @@ def layer_norm(x, g, b, eps: float = 1e-5):
     return g * x + b  # scale and offset with gamma/beta params
 
 
-def linear(x, w, b):  # (m, in), (in, out), (out) -> (m, out)
+def linear(
+    x: mx.array, w: mx.array, b: mx.array
+) -> mx.array:  # (m, in), (in, out), (out) -> (m, out)
     return x @ w + b
 
 
@@ -125,39 +127,56 @@ def attention(q, k, v, mask):
     return mx.matmul(weights, v)  # (batch, seq_len, head_dim)
 
 
-def mha(x, c_attn, c_proj, n_head):
-    batch, seq_len, emb = x.shape
-    # qkv projection
-    qkv = linear(x, **c_attn)  # (batch, seq_len, 3*emb)
+def mha(
+    x: mx.array, c_attn: dict, c_proj: dict, *, n_head: int
+) -> mx.array:  # output: (batch, seq_len, emb)
+    # qkv projection: (batch, seq_len, 3*emb)
+    qkv = linear(x, **c_attn)
     q, k, v = mx.split(qkv, 3, axis=-1)
 
-    # split into heads → list of length n_head; each (batch, seq_len, head_dim)
-    q_heads = mx.split(q, n_head, axis=-1)
-    k_heads = mx.split(k, n_head, axis=-1)
-    v_heads = mx.split(v, n_head, axis=-1)
+    batch, seq_len, embed_dim = q.shape
+    head_dim = embed_dim // n_head
 
-    # causal mask: (seq_len, seq_len) → (1, seq_len, seq_len)
-    causal_mask = (1 - mx.tri(seq_len, seq_len, k=0, dtype=x.dtype)) * -1e10
-    causal_mask = mx.expand_dims(causal_mask, axis=0)
+    # Reshape q, k, v to (batch, seq_len, n_head, head_dim)
+    q = mx.reshape(q, (batch, seq_len, n_head, head_dim))
+    k = mx.reshape(k, (batch, seq_len, n_head, head_dim))
+    v = mx.reshape(v, (batch, seq_len, n_head, head_dim))
 
-    # per‑head attention
-    out_heads = [
-        attention(qh, kh, vh, causal_mask)
-        for qh, kh, vh in zip(q_heads, k_heads, v_heads)
-    ]  # list of (batch, seq_len, head_dim)
+    total_seq_len = k.shape[1]  # total sequence length including past
 
-    # concat heads → (batch, seq_len, emb)
-    concat = mx.concatenate(out_heads, axis=-1)
-    return linear(concat, **c_proj)
+    # Rearrange tensors for attention: (batch, n_head, seq_len, head_dim)
+    q = mx.transpose(q, (0, 2, 1, 3))
+    k = mx.transpose(k, (0, 2, 1, 3))
+    v = mx.transpose(v, (0, 2, 1, 3))
+
+    # Scaled dot-product attention
+    # scores: (batch, n_head, seq_len, total_seq_len)
+    scores = mx.matmul(q, mx.transpose(k, (0, 1, 3, 2))) / mx.sqrt(mx.array(head_dim))
+
+    # Create causal mask with shape (1, 1, total_seq_len, total_seq_len)
+    causal_mask = (1 - mx.tri(total_seq_len, total_seq_len, k=0, dtype=x.dtype)) * -1e10
+    causal_mask = causal_mask.reshape((1, 1, total_seq_len, total_seq_len))
+    scores = scores + causal_mask
+
+    # Compute attention weights and context
+    weights = softmax(scores)  # (batch, n_head, seq_len, total_seq_len)
+    context = mx.matmul(weights, v)  # (batch, n_head, seq_len, head_dim)
+
+    # Rearrange back: (batch, seq_len, n_head, head_dim)
+    context = mx.transpose(context, (0, 2, 1, 3))
+    # Reshape to (batch, seq_len, embed_dim)
+    context = mx.reshape(context, (batch, seq_len, embed_dim))
+    output = linear(context, **c_proj)
+
+    return output
 
 
 def transformer_block(
     x, mlp, attn, ln_1, ln_2, n_head
 ):  # (n_seq, n_embd) -> (n_seq, n_embd)
     # multi-head causal self attention
-    x = x + mha(
-        layer_norm(x, **ln_1), **attn, n_head=n_head
-    )  # (n_seq, n_embd) -> (n_seq, n_embd)
+    m = mha(layer_norm(x, **ln_1), **attn, n_head=n_head)
+    x = x + m
 
     # position-wise feed forward network
     x = x + ffn(layer_norm(x, **ln_2), **mlp)  # (n_seq, n_embd) -> (n_seq, n_embd)

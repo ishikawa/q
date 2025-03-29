@@ -1,9 +1,13 @@
+import os
 from typing import Any, Literal, TypeAlias, TypedDict
 
 import mlx.core as mx
 
 MODEL_SIZE = ["124M", "355M", "774M", "1558M"]
 ModelSize: TypeAlias = Literal["124M", "355M", "774M", "1558M"]
+
+# Default model directory at `models` folder
+DEFAULT_MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 
 
 class GPT2HyperParams(TypedDict):

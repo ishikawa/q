@@ -30,7 +30,7 @@ class TokenGenerator:
         """
         generate method for text generation
         """
-        # calculate max_length and max_new_tokens
+        # calculate `max_length` and `max_new_tokens`
         if max_new_tokens is None:
             if len(inputs) > max_length:
                 raise ValueError(
@@ -50,15 +50,18 @@ class TokenGenerator:
             )
 
         # clone inputs to avoid modifying the original list
-        inputs = inputs.copy()
+        inputs_array = mx.array([inputs])
 
         for _ in range(max_new_tokens):  # auto-regressive decode loop
             # model forward pass (shape: [1, n_seq, n_vocab])
-            logits = self.model(mx.array([inputs])).logits
-            # Get the last token's logits in the sequence for batch 0
+            logits = self.model(inputs_array).logits
+
+            # greedy sampling
             last_token_logits = logits[0, -1]  # shape: [n_vocab]
-            next_id = mx.argmax(last_token_logits)  # greedy sampling
+            next_id = mx.argmax(last_token_logits)
+
+            # append prediction to input
             next_token = int(next_id)
-            inputs.append(next_token)  # append prediction to input
+            inputs_array = mx.concat([inputs_array, mx.array([[next_token]])], axis=1)
 
             yield next_token
